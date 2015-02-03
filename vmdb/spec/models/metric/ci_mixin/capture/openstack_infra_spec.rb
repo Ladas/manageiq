@@ -20,7 +20,7 @@ describe Metric::CiMixin::Capture::Openstack do
     @host.stub(:perf_init_openstack).and_return(@ems_openstack)
   end
 
-  context "with non-aggregated data" do
+  context "with standard interval data" do
     before :each do
       @ems_openstack.stub(:get_statistics) do |name, _options|
         OpenstackApiResult.new(@mock_stats_data.get_statistics(name))
@@ -50,52 +50,89 @@ describe Metric::CiMixin::Capture::Openstack do
       *_, write_bytes_prev, write_bytes1, write_bytes2 = @mock_stats_data.get_statistics(
           "hardware.system_stats.io.incoming.blocks")
 
-      read_ts_prev = api_time_as_utc(read_bytes_prev)
-      _write_ts_prev = api_time_as_utc(write_bytes_prev)
+      read_ts_prev = api_duration_time_as_utc(read_bytes_prev)
+      write_ts_prev = api_duration_time_as_utc(write_bytes_prev)
+      read_val_prev = read_bytes_prev["avg"]
+      write_val_prev = write_bytes_prev["avg"]
 
       # 2. calculate the disk_usage_rate_average for the 2nd-to-last API result
-      read_ts1 = api_time_as_utc(read_bytes1)
+      read_ts1 = api_duration_time_as_utc(read_bytes1)
       read_val1 = read_bytes1["avg"]
-      _write_ts1 = api_time_as_utc(write_bytes1)
+      write_ts1 = api_duration_time_as_utc(write_bytes1)
       write_val1 = write_bytes1["avg"]
-      disk_val1 = counter_info[:calculation].call(read_val1, write_val1, read_ts1 - read_ts_prev)
+      disk_val1 = counter_info[:calculation].call(
+        {
+          "hardware.system_stats.io.incoming.blocks" => read_val1 - read_val_prev,
+          "hardware.system_stats.io.outgoing.blocks" => write_val1 - write_val_prev
+        },
+        {
+          "hardware.system_stats.io.incoming.blocks" => read_ts1 - read_ts_prev,
+          "hardware.system_stats.io.outgoing.blocks" => write_ts1 - write_ts_prev,
+        })
 
       # 3. calculate the disk_usage_rate_average for the last API result
-      read_ts2 = api_time_as_utc(read_bytes2)
+      read_ts2 = api_duration_time_as_utc(read_bytes2)
       read_val2 = read_bytes2["avg"]
-      _write_ts2 = api_time_as_utc(write_bytes2)
+      write_ts2 = api_duration_time_as_utc(write_bytes2)
       write_val2 = write_bytes2["avg"]
-      disk_val2 = counter_info[:calculation].call(read_val2, write_val2, read_ts2 - read_ts1)
-
-      # 4. disk_val1 and disk_val2 are cumulative values
-      # calculate the diff to provide a discrete value for the duration
-      disk_val = disk_val2 - disk_val1
+      disk_val2 = counter_info[:calculation].call(
+        {
+            "hardware.system_stats.io.incoming.blocks" => read_val2 - read_val1 ,
+            "hardware.system_stats.io.outgoing.blocks" => write_val2 - write_val1
+        },
+        {
+            "hardware.system_stats.io.incoming.blocks" => read_ts2 - read_ts1,
+            "hardware.system_stats.io.outgoing.blocks" => write_ts2 - write_ts1,
+        })
 
       # get the actual values from the method
       _, values_by_id_and_ts = @host.perf_collect_metrics_openstack("perf_capture_data_openstack_infra", "realtime")
       values_by_ts = values_by_id_and_ts[@host.ems_ref]
 
-      # make sure that the last calculated value is the same as the discrete value
-      # calculated in step #4 above
+      # make sure that the last calculated value is the same as the discrete values
+      # calculated in step #2 and #3 above
       *_, result = values_by_ts
 
-      result[read_ts2.iso8601]["disk_usage_rate_average"].should eq disk_val
+      read_ts1_period = api_time_as_utc(read_bytes1)
+      read_ts2_period = api_time_as_utc(read_bytes2)
+      result[read_ts1_period.iso8601]["disk_usage_rate_average"].should eq disk_val1
+      result[read_ts2_period.iso8601]["disk_usage_rate_average"].should eq disk_val2
     end
   end
 
-  context "with aggregated data" do
-    before :each do
+  context "with irregular interval data" do
+    before do
       @ems_openstack.stub(:get_statistics) do |name, _options|
-        OpenstackApiResult.new(@mock_stats_data.get_statistics(name, "aggregate"))
+        OpenstackApiResult.new(@mock_stats_data.get_statistics(name, "irregular_interval"))
       end
+
+      @orig_log = $log
+      $log = double.as_null_object
     end
 
-    it "aggregates results for collection intervals not divisible by 20sec" do
-      pending "tests to be written for aggregating openstack metric results for irregular intervals"
+    after do
+      $log = @orig_log
+    end
+
+    it "normalizes irregular intervals into 20sec intervals" do
+      # tbd
+    end
+
+    it "logs when capture intervals are too small" do
+      $log.should_receive(:warn).with(/Capture interval invalid/).at_least(:once)
+      @vm.perf_collect_metrics_openstack("realtime")
     end
   end
 
   def api_time_as_utc(api_result)
-    Time.parse("#{api_result["duration_end"]}Z")
+    period_end = api_result["period_end"]
+    period_end << "Z" if period_end.size == 19
+    Time.parse(period_end)
+  end
+
+  def api_duration_time_as_utc(api_result)
+    duration_end = api_result["duration_end"]
+    duration_end << "Z" if duration_end.size == 19
+    Time.parse(duration_end)
   end
 end
