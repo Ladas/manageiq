@@ -12,7 +12,7 @@ module OrchestrationStackHelper::TextualSummary
   end
 
   def textual_group_relationships
-    %i(ems_cloud service orchestration_template instances security_groups cloud_networks parameters outputs resources)
+    %i(ems_cloud service parent_orchestration_stack child_orchestration_stack orchestration_template instances security_groups cloud_networks parameters outputs resources)
   end
 
   def textual_group_tags
@@ -55,7 +55,7 @@ module OrchestrationStackHelper::TextualSummary
 
   def textual_service
     h = {:label => _("Service"), :image => "service"}
-    service = @record.service
+    service = @record.try(:root).try(:service)
     if service.nil?
       h[:value] = _("None")
     else
@@ -64,6 +64,23 @@ module OrchestrationStackHelper::TextualSummary
       h[:link]  = url_for(:controller => 'service', :action => 'show', :id => service)
     end
     h
+  end
+
+  def textual_parent_orchestration_stack
+    @record.parent
+  end
+
+  def textual_child_orchestration_stack
+    num   = @record.number_of(:children)
+    if num == 1 && role_allows(:feature => "orchestration_stack_show")
+      @record.children.first
+    elsif num > 1 && role_allows(:feature => "orchestration_stack_show_list")
+      label     = _("Child Orchestration Stacks")
+      h         = {:label => label, :image => "orchestration_stack", :value => num}
+      h[:link]  = url_for(:action => 'show', :id => @record.id, :display => 'children')
+      h[:title] = _("Show all %{label}") % {:label => label}
+      h
+    end
   end
 
   def textual_orchestration_template
@@ -94,7 +111,8 @@ module OrchestrationStackHelper::TextualSummary
   end
 
   def textual_cloud_networks
-    num   = @record.number_of(:cloud_networks)
+    num = @record.number_of(:cloud_networks)
+    return nil if num <= 0
     {:label => ui_lookup(:tables => "cloud_network"), :image => "cloud_network", :value => num}
   end
 
