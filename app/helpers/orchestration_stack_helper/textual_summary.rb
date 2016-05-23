@@ -71,7 +71,7 @@ module OrchestrationStackHelper::TextualSummary
   end
 
   def textual_child_orchestration_stack
-    num   = @record.number_of(:children)
+    num = @record.number_of(:children)
     if num == 1 && role_allows(:feature => "orchestration_stack_show")
       @record.children.first
     elsif num > 1 && role_allows(:feature => "orchestration_stack_show_list")
