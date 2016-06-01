@@ -18,7 +18,7 @@ class Service < ApplicationRecord
   virtual_has_many   :all_service_children
   virtual_has_many   :vms
   virtual_has_many   :all_vms
-  virtual_column     :v_total_vms,            :type => :integer,  :uses => :vms
+  virtual_column     :v_total_vms,            :type => :integer,  :uses => :all_vms
   virtual_has_one    :picture, :uses => :service_template
 
   virtual_has_one    :custom_actions
@@ -97,11 +97,11 @@ class Service < ApplicationRecord
   end
 
   def all_vms
-    MiqPreloader.preload_and_map(subtree, :direct_vms)
+    MiqPreloader.preload_and_map(subtree, :vms)
   end
 
   def vms
-    all_vms
+    service_resources.where(:resource_type => 'VmOrTemplate').includes(:resource).collect(&:resource).compact
   end
 
   def start
@@ -160,7 +160,7 @@ class Service < ApplicationRecord
       :args        => [action, group_idx, direction]
     }
     nh[:deliver_on] = deliver_delay.seconds.from_now.utc if deliver_delay > 0
-    first_vm = vms.first
+    first_vm = all_vms.first
     nh[:zone] = first_vm.ext_management_system.zone.name unless first_vm.nil?
     MiqQueue.put(nh)
     true
@@ -216,7 +216,7 @@ class Service < ApplicationRecord
   end
 
   def v_total_vms
-    vms.size
+    all_vms.size
   end
 
   def set_tenant_from_group
