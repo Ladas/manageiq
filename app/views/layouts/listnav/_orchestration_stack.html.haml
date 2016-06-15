@@ -21,7 +21,7 @@
 
         - if @record.try(:orchestration_template)
           %li.disabled
-            = link_to("#{ui_lookup(:table => 'orchestration_template')}: #{@record.orchestration_template.name}", "#")
+            = link_to("#{ui_lookup(:table => 'orchestration_template')}: #{@record.try(:orchestration_template).try(:name)}", "#")
 
         - if role_allows(:feature => "vm_show_list")
           = li_link(:count => @record.number_of(:vms),
