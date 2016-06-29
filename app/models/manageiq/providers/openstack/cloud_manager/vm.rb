@@ -33,18 +33,6 @@ class ManageIQ::Providers::Openstack::CloudManager::Vm < ManageIQ::Providers::Cl
     floating_ips.first
   end
 
-  def cloud_network
-    # TODO(lsmola) NetworkProvider Backwards compatibility layer with simplified architecture where VM has only one
-    # network. Put this into ManageIQ::Providers::CloudManager::Vm when NetworkProvider is done in all providers
-    cloud_networks.first
-  end
-
-  def cloud_subnet
-    # TODO(lsmola) NetworkProvider Backwards compatibility layer with simplified architecture where VM has only one
-    # network. Put this into ManageIQ::Providers::CloudManager::Vm when NetworkProvider is done in all providers
-    cloud_subnets.first
-  end
-
   def provider_object(connection = nil)
     connection ||= ext_management_system.connect
     connection.servers.get(ems_ref)
