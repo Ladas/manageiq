@@ -110,6 +110,16 @@
       :javascript
         miqSelectPickerEvent('field_required', "#{url}")
 
+  - if %w(DialogFieldDropDownList).include?(@edit[:field_typ])
+    .form-group
+      %label.col-md-2.control-label
+        = _('Multiselect')
+      .col-md-8
+        = check_box_tag('field_multi_value', true,
+                        @edit[:field_multi_value],
+                        :disabled                   => disable_check_box?,
+                        "data-miq_observe_checkbox" => {:url => url}.to_json)
+
   .form-group
     %label.col-md-2.control-label
       = _('Default Value')

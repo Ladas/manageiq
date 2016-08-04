@@ -31,7 +31,15 @@
       = render(:partial => "shared/dialogs/dialog_field_radio_button", :locals => locals)
 
     - when "DialogFieldDropDownList"
-      = render(:partial => "shared/dialogs/dialog_field_drop_down_list", :locals => locals)
+      - category_tags = field.values.collect(&:reverse)
+      - if field.multi_value?
+        = select_tag(field.name,
+                     options_for_select(category_tags, wf.value(field.name)),
+                     drop_down_options(field, url).merge(:multiple => true))
+        = javascript_tag "dialogFieldRefresh.initializeDialogSelectPicker('#{field.name}', '#{field.id}', undefined, '#{url}',
+        '#{field.trigger_auto_refresh}');"
+      - else
+        = render(:partial => "shared/dialogs/dialog_field_drop_down_list", :locals => locals)
 
     - when 'DialogFieldButton'
       = button_tag(_("Save"), :class => edit ? 'btn btn-primary' : 'btn btn-primary btn-disabled')
