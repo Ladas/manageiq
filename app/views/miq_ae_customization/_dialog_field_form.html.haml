@@ -59,12 +59,13 @@
   - unless @edit[:field_typ].nil?
     %h3
       = _('Options')
+
     .form-horizontal
       - if @edit[:field_dynamic] == true
         = render :partial => 'dialog_field_form_dynamic_options', :locals => {:url => url}
       - else
         = render :partial => 'dialog_field_form_non_dynamic_options', :locals => {:url => url}
-      
+
       .form-group
         %label.col-md-2.control-label
           = _('Auto Refresh other fields when modified')
@@ -74,6 +75,14 @@
                           'data-miq_observe_checkbox' => {:url => url}.to_json)
 
   - if @edit[:field_typ] =~ /Drop|Radio/ && !@edit[:field_dynamic]
+    .form-horizontal
+      .form-group
+        %label.col-md-2.control-label
+          = _('Multiselect')
+        .col-md-8
+          = check_box_tag('field_multi_value', true,
+                          @edit[:field_multi_value],
+                          "data-miq_observe_checkbox" => {:url => url}.to_json)
     = render :partial => 'field_values', :locals => {:entry => nil}
   - elsif @edit[:field_typ] && @edit[:field_typ].include?("TagControl") && @edit[:field_category].present?
     = render :partial => 'tag_field_values', :locals => {:entry => nil}
