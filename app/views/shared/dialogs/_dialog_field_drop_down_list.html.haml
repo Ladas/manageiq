@@ -1,7 +1,13 @@
 - if edit
-  - select_values = field.values.collect(&:reverse)
+  - select_values = field.values.collect()
   - selected ||= wf.value(field.name)
-  = select_tag(field.name, options_for_select(select_values, selected), drop_down_options(field, url))
+
+  - if field.multi_value?
+    = select_tag(field.name,
+                 options_for_select(select_values, wf.value(field.name)),
+                 drop_down_options(field, url).merge(:multiple => true))
+  - else
+    = select_tag(field.name, options_for_select(select_values, selected), drop_down_options(field, url))
 
   :javascript
     dialogFieldRefresh.initializeDialogSelectPicker('#{field.name}', '#{field.id}', '#{selected}', '#{url}');
