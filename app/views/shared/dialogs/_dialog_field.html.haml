@@ -31,10 +31,10 @@
       = render(:partial => "shared/dialogs/dialog_field_radio_button", :locals => locals)
 
     - when "DialogFieldDropDownList"
-      - category_tags = field.values.collect(&:reverse)
+      - drop_down_values = field.values.collect()
       - if field.multi_value?
         = select_tag(field.name,
-                     options_for_select(category_tags, wf.value(field.name)),
+                     options_for_select(drop_down_values, wf.value(field.name)),
                      drop_down_options(field, url).merge(:multiple => true))
         = javascript_tag "dialogFieldRefresh.initializeDialogSelectPicker('#{field.name}', '#{field.id}', undefined, '#{url}',
         '#{field.trigger_auto_refresh}');"
