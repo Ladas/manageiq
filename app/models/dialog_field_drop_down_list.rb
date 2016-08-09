@@ -38,6 +38,11 @@ class DialogFieldDropDownList < DialogFieldSortedItem
     {:refreshed_values => refreshed_values, :checked_value => @value, :read_only => read_only?, :visible => visible?}
   end
 
+  def automate_output_value
+    return nil if @value.blank?
+    MiqAeEngine.create_automation_attribute_array_value(@value.split.map(&:to_i))
+  end
+
   private
 
   def load_values_on_init?
