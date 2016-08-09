@@ -82,19 +82,32 @@
                             - if field.type == "DialogFieldDropDownList"
                               - if field.required
                                 - if field.default_value.nil?
-                                  = select_tag('field.id',
-                                    options_for_select(val.collect(&:reverse), field.default_value))
+                                  - if field.multi_value?
+                                    = select_tag('field.id',
+                                      options_for_select(val.collect, field.default_value, :multiple => true))
+                                  - else
+                                    = select_tag('field.id',
+                                      options_for_select(val.collect, field.default_value))
                                 - else
-                                  = select_tag('field.id',
-                                              options_for_select([["<#{_('Choose')}>", nil]] + val.collect(&:reverse),
-                                                                  field.default_value))
+                                  - if field.multi_value?
+                                    = select_tag('field.id',
+                                                options_for_select(([["<#{_('Choose')}>", nil]] + val).collect,
+                                                                    field.default_value), :multiple => true)
+                                  - else
+                                    = select_tag('field.id',
+                                                options_for_select(([["<#{_('Choose')}>", nil]] + val).collect,
+                                                                    field.default_value))
 
                               - else
                                 -# NOT REQUIRED
-                                = select_tag('field.id',
-                                              options_for_select([["#{_('None')}", nil]] + val.collect(&:reverse),
+                                - if field.multi_value?
+                                  = select_tag('field.id',
+                                              options_for_select(([["#{_('None')}", nil]] + val).collect,
+                                                                  field.default_value), :multiple => true)
+                                - else
+                                  = select_tag('field.id',
+                                              options_for_select(([["#{_('None')}", nil]] + val).collect,
                                                                   field.default_value))
-
                             - else
                               - val.each_with_index do |rb, i|
                                 - unless field.required || i != 0
