@@ -39,9 +39,20 @@ class DialogFieldDropDownList < DialogFieldSortedItem
   end
 
   def automate_output_value
-    return nil if @value.blank?
-    MiqAeEngine.create_automation_attribute_array_value(@value.split.map(&:to_i))
+    return super unless multi_value?
+    a = @value.chomp.split(',')
+    automate_values = a.first.kind_of?(Integer) ? a.map(&:to_i) : a
+    MiqAeEngine.create_automation_attribute_array_value(automate_values)
   end
+
+  def automate_key_name
+    MiqAeEngine.create_automation_attribute_array_key(super)
+  end
+
+  # unsure if i need this but tagControl has it
+  # def value_from_dialog_fields(dialog_values)
+  #  value = dialog_values[automate_key_name]
+  # end
 
   private
 
