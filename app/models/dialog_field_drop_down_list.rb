@@ -46,13 +46,9 @@ class DialogFieldDropDownList < DialogFieldSortedItem
   end
 
   def automate_key_name
+    return super unless multi_value?
     MiqAeEngine.create_automation_attribute_array_key(super)
   end
-
-  # unsure if i need this but tagControl has it
-  # def value_from_dialog_fields(dialog_values)
-  #  value = dialog_values[automate_key_name]
-  # end
 
   private
 
