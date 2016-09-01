@@ -1,7 +1,6 @@
 - if edit
-  - select_values = field.values.collect
+  - select_values = field.values.collect(&:reverse)
   - selected ||= wf.value(field.name)
-
   - if field.multi_value?
     = select_tag(field.name,
                  options_for_select(select_values, wf.value(field.name)),
@@ -19,7 +18,12 @@
   - if field.auto_refresh
     :javascript
       dialogFieldRefresh.listenForAutoRefreshMessages("#{field.id}", function() {
-        var selectedValue = $('select[name="#{field.name}"]').val();
+        var field = $('select[name="#{field.name}"]').length;
+        if (field) {
+          var selectedValue = $('select[name="#{field.name}"]').val();
+        } else {
+          var selectedValue = $('select[name="#{field.name}[]"]').val();
+        }
         dialogFieldRefresh.refreshDropDownList("#{field.name}", "#{field.id}", selectedValue);
       });
 

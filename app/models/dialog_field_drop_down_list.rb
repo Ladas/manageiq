@@ -13,7 +13,7 @@ class DialogFieldDropDownList < DialogFieldSortedItem
   end
 
   def multi_value?
-    return true if options[:force_multi_value].present? && options[:force_multi_value] != "null"
+    return true if options[:force_multi_value].present? && options[:force_multi_value] != "null" && options[:force_multi_value]
   end
 
   def force_multi_value=(setting)
@@ -29,25 +29,27 @@ class DialogFieldDropDownList < DialogFieldSortedItem
 
     refreshed_values = values
 
-    if refreshed_values.collect { |value_pair| value_pair[0].to_s }.include?(checked_value)
+    if checked_value.is_a?(Array) && (refreshed_values.collect { |value_pair| value_pair[0].to_s } & checked_value).present?
+      @value = refreshed_values.collect { |value_pair| value_pair[0].to_s } & checked_value
+    elsif refreshed_values.collect { |value_pair| value_pair[0].to_s }.include?(checked_value)
       @value = checked_value
     else
       @value = @default_value
     end
-
     {:refreshed_values => refreshed_values, :checked_value => @value, :read_only => read_only?, :visible => visible?}
   end
 
   def automate_output_value
     return super unless multi_value?
-    a = @value.chomp.split(',')
+    if @value.is_a?(Integer)
+      a = [@value]
+    elsif @value.is_a?(Array)
+      a = @value
+    else
+      a = @value.blank? ? [] : @value.chomp.split(',')
+    end
     automate_values = a.first.kind_of?(Integer) ? a.map(&:to_i) : a
     MiqAeEngine.create_automation_attribute_array_value(automate_values)
-  end
-
-  def automate_key_name
-    return super unless multi_value?
-    MiqAeEngine.create_automation_attribute_array_key(super)
   end
 
   private
