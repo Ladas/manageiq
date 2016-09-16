@@ -1283,6 +1283,11 @@ class CatalogController < ApplicationController
             options[:scaling_max] = sr[:scaling_max].to_i
             if sr[:resource_id].to_s == rsc.id.to_s
               begin
+                # TODO(lsmola) this is interesting place, is there already circular reference possible? yeeah, we can
+                # add bundle to bundle, awesome.
+                # So I need to add here a directed graph circular check and deadlock caused by draph dependency having
+                # higher priority
+                byebug
                 st.add_resource(rsc, options)
               rescue MiqException::MiqServiceCircularReferenceError => bang
                 @add_rsc = false

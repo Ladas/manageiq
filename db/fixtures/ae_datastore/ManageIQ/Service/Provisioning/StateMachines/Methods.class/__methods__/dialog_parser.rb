@@ -129,3 +129,5 @@ else
 end
 
 save_parsed_dialog_information(options_hash, tags_hash, task)
+# TODO save also output from dependencies, do a call for all_dependencies and expose it, then collect task.all_dependencies
+# we can store output in service custom attributes, and just read is from the tsak.destination which is service

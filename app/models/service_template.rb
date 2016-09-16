@@ -187,6 +187,7 @@ class ServiceTemplate < ApplicationRecord
   # default implementation to create subtasks from service resources
   def create_subtasks(parent_service_task, parent_service)
     tasks = []
+    tasks_by_service_resource_id = {}
     service_resources.each do |child_svc_rsc|
       scaling_min = child_svc_rsc.scaling_min
       1.upto(scaling_min).each do |scaling_idx|
@@ -217,8 +218,20 @@ class ServiceTemplate < ApplicationRecord
         parent_service_task.miq_request.miq_request_tasks << new_task
 
         tasks << new_task
+        (tasks_by_service_resource_id[child_svc_rsc.id] ||= []) << new_task
       end
     end
+
+    service_resources.each do |child_svc_rsc|
+      child_svc_rsc.service_resource_dependencies.each do |resource_dependency|
+        tasks_by_service_resource_id[child_svc_rsc.id].each do |child_svc_rsc_task|
+          tasks_by_service_resource_id[resource_dependency.id].each do |resource_dependency_task|
+            child_svc_rsc_task.miq_request_task_dependencies << resource_dependency_task
+          end
+        end
+      end
+    end
+
     tasks
   end
 

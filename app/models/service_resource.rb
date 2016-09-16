@@ -4,6 +4,9 @@ class ServiceResource < ApplicationRecord
   belongs_to :resource, :polymorphic => true
   belongs_to :source,   :polymorphic => true
 
+  has_many :service_resource_dependency_mappings
+  has_many :service_resource_dependencies, :through => :service_resource_dependency_mappings
+
   default_value_for :group_idx, 0
   default_value_for :scaling_min, 1
   default_value_for :scaling_max, -1

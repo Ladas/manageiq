@@ -244,6 +244,9 @@ begin
 
   dialog_options_hash, dialog_tags_hash = parsed_dialog_information
 
+  # TODO, take saved dialog data from parser, from dependent tasks and merge them to the dialog, that way, we have done
+  # an input/output interface between tasks (catalog items in bundle) based on their graph connection
+  # We need to figure out what has the highest priority and what will be the merge strategies.
   unless dialog_options_hash.blank?
     override_service_name(dialog_options_hash)
     override_service_description(dialog_options_hash)

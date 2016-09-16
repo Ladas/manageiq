@@ -10,6 +10,9 @@ class MiqRequestTask < ApplicationRecord
   belongs_to :miq_request_task
   belongs_to :tenant
 
+  has_many :miq_request_task_dependency_mappings
+  has_many :miq_request_task_dependencies, :through => :miq_request_task_dependency_mappings
+
   serialize   :phase_context, Hash
   serialize   :options,       Hash
 

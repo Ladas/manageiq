@@ -20,11 +20,18 @@ class ServiceTemplateProvisionTask < MiqRequestTask
     true
   end
 
+  def dependencies_run_now?
+    return true  if miq_request_task_dependencies.blank?
+    return false if miq_request_task_dependencies.detect { |t| t.state != "finished" }
+    true
+  end
+
   def group_sequence_run_now?
     parent = miq_request_task
     return true   if parent.nil?
     return false  unless parent.group_sequence_run_now?
     return false  unless sibling_sequence_run_now?
+    return false  unless dependencies_run_now?
     true
   end
 
