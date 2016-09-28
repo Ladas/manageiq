@@ -793,7 +793,8 @@ module ApplicationHelper
        container_route container_project container_replicator container_image
        container_image_registry persistent_volume container_build
        ems_container vm miq_template offline retired templates
-       host service storage ems_cloud ems_cluster flavor
+       ems_middleware middleware_server middleware_domain middleware_messaging middleware_deployment
+       middleware_datasource host service storage ems_cloud ems_cluster flavor
        ems_network security_group floating_ip cloud_subnet network_router network_port cloud_network
        load_balancer
        resource_pool ems_infra ontap_storage_system ontap_storage_volume
@@ -833,7 +834,7 @@ module ApplicationHelper
   end
 
   def pressed2model_action(pressed)
-    pressed =~ /^(ems_cluster|miq_template)_(.*)$/ ? [$1, $2] : pressed.split('_', 2)
+    pressed =~ /^(ems_cluster|miq_template|infra_networking)_(.*)$/ ? [$1, $2] : pressed.split('_', 2)
   end
 
   def model_for_ems(record)
@@ -1162,7 +1163,8 @@ module ApplicationHelper
          ems_infra host miq_template offline orchestration_stack persistent_volume ems_middleware
          middleware_server middleware_deployment middleware_datasource middleware_domain middleware_server_group
          middleware_messaging ems_network security_group floating_ip cloud_subnet network_router network_port
-         cloud_network resource_pool retired service templates vm configuration_job).include?(@layout) && !@in_a_form
+         cloud_network resource_pool retired service storage templates vm
+         configuration_job).include?(@layout) && !@in_a_form
       "show_list"
     elsif @compare
       "compare_sections"
@@ -1189,7 +1191,8 @@ module ApplicationHelper
     show_search = %w(auth_key_pair_cloud availability_zone cim_base_storage_extent cloud_object_store_container
                      cloud_tenant cloud_volume cloud_volume_snapshot container_group container_node container_service
                      container_route container_project container_replicator container_image container_image_registry
-                     persistent_volume container_build
+                     persistent_volume container_build ems_middleware middleware_server middleware_domain
+                     middleware_messaging middleware_deployment middleware_datasource
                      ems_cloud ems_cluster ems_container ems_infra flavor host miq_template offline
                      ontap_file_share ontap_logical_disk ontap_storage_system ontap_storage_volume
                      ems_network security_group floating_ip cloud_subnet network_router network_port cloud_network

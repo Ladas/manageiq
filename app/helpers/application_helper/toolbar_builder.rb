@@ -522,11 +522,6 @@ class ApplicationHelper::ToolbarBuilder
     return true if %w(container_build_edit container_build_delete container_build_new).include?(id) &&
                    (@record.kind_of?(ContainerBuild) || @record.nil?)
 
-    # hide edit button for MiqRequest instances of type ServiceReconfigureRequest/ServiceTemplateProvisionRequest
-    # TODO: extend .is_available? support via refactoring task to cover this scenario
-    return true if id == 'miq_request_edit' &&
-                   %w(ServiceReconfigureRequest ServiceTemplateProvisionRequest).include?(@miq_request.try(:type))
-
     # hide compliance check and comparison buttons rendered for orchestration stack instances
     return true if @record.kind_of?(OrchestrationStack) && @display == "instances" &&
                    %w(instance_check_compliance instance_compare).include?(id)
@@ -605,9 +600,6 @@ class ApplicationHelper::ToolbarBuilder
 
     return false if id.starts_with?("miq_capacity_") && @sb[:active_tab] == "report"
 
-    # hide button if id is approve/deny and miq_request_approval feature is not allowed.
-    return true if !role_allows?(:feature => "miq_request_approval") && ["miq_request_approve", "miq_request_deny"].include?(id)
-
     # don't check for feature RBAC if id is miq_request_approve/deny
     unless %w(miq_policy catalogs).include?(@layout)
       return true if !role_allows?(:feature => id) && !["miq_request_approve", "miq_request_deny"].include?(id) &&
@@ -683,7 +675,7 @@ class ApplicationHelper::ToolbarBuilder
       when "miq_ae_instance_copy", "miq_ae_method_copy"
         return false unless editable_domain?(@record)
       when "miq_ae_git_refresh"
-        return true unless git_enabled?(@record) && MiqRegion.my_region.role_active?("git_owner")
+        return true unless git_enabled?(@record) && GitBasedDomainImportService.available?
       else
         return true unless editable_domain?(@record)
       end
@@ -691,25 +683,6 @@ class ApplicationHelper::ToolbarBuilder
       case id
       when "event_edit"
         return true if x_active_tree == :event_tree || !role_allows?(:feature => "event_edit")
-      end
-    when "MiqRequest"
-      # Don't hide certain buttons on AutomationRequest screen
-      return true if @record.resource_type == "AutomationRequest" &&
-                     !["miq_request_approve", "miq_request_deny", "miq_request_delete"].include?(id)
-
-      case id
-      when "miq_request_approve", "miq_request_deny"
-        return true if ["approved", "denied"].include?(@record.approval_state) || @showtype == "miq_provisions"
-      when "miq_request_edit"
-        return true if current_user.name != @record.requester_name || ["approved", "denied"].include?(@record.approval_state)
-      when "miq_request_copy"
-        resource_types_for_miq_request_copy = %w(MiqProvisionRequest
-                                                 MiqHostProvisionRequest
-                                                 MiqProvisionConfiguredSystemRequest)
-        return true if !resource_types_for_miq_request_copy.include?(@record.resource_type) ||
-                       ((current_user.name != @record.requester_name ||
-                         !@record.request_pending_approval?) &&
-                        @showtype == "miq_provisions")
       end
     when "MiqServer", "MiqRegion"
       case id

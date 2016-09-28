@@ -1280,12 +1280,17 @@ Vmdb::Application.routes.draw do
         perf_chart_chooser
         show
         show_list
+        quick_search
+        listnav_search_selected
         tl_chooser
         update
         wait_for_task
         tagging_edit
         tag_edit_form_field_changed
-      )
+      ) +
+        adv_search_post +
+        exp_post +
+        save_post
     },
 
     :ems_network              => {
@@ -1382,7 +1387,10 @@ Vmdb::Application.routes.draw do
     :cloud_subnet             => {
       :get  => %w(
         download_data
+        cloud_subnet_form_fields
+        edit
         index
+        new
         show
         show_list
         tagging_edit
@@ -1390,12 +1398,16 @@ Vmdb::Application.routes.draw do
         compare_get,
       :post => %w(
         button
+        create
+        dynamic_checkbox_refresh
+        form_field_changed
+        listnav_search_selected
         quick_search
         show
         show_list
-        listnav_search_selected
         tag_edit_form_field_changed
         tagging_edit
+        update
       ) +
         adv_search_post +
         compare_post +
@@ -1606,6 +1618,7 @@ Vmdb::Application.routes.draw do
         index
         show
         show_list
+        tagging
         tagging_edit
         x_show
       ),
@@ -1619,15 +1632,18 @@ Vmdb::Application.routes.draw do
         show
         show_list
         tag_edit_form_field_changed
+        tagging
         tagging_edit
         tree_select
         tree_autoload
+        x_button
         x_show
         x_search_by_name
       ) +
         adv_search_post +
         exp_post +
-        save_post
+        save_post +
+        x_post
     },
 
     :generic_object => {

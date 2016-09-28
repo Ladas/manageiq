@@ -4,15 +4,12 @@ module SkeletalRefresh
 
     class << self
       def save_inventory(ems, hashes)
-        byebug
         hashes.each do |key, value|
           save_collection(ems, key, value)
         end
       end
 
       def save_collection(parent, collection, data)
-        byebug
-
         save_inventory_multi(parent.send(collection),
                              data,
                              :use_association,
