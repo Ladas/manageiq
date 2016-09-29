@@ -50,6 +50,7 @@ module EmsRefresh::SaveInventoryHelper
 
     new_records = []
     hashes.each do |h|
+      h = h.is_a?(DtoCollection::Dto) ? h.attributes : h
       found = save_inventory_with_findkey(association, h.except(*remove_keys), deletes, new_records, record_index)
       save_child_inventory(found, h, child_keys)
     end
@@ -62,7 +63,12 @@ module EmsRefresh::SaveInventoryHelper
     end
 
     # Add the new items
-    association.push(new_records)
+    begin
+      association.push(new_records)
+    rescue
+      new_records.each &:save
+    end
+
   end
 
   def save_inventory_single(type, parent, hash, child_keys = [], extra_keys = [], disconnect = false)
@@ -110,6 +116,7 @@ module EmsRefresh::SaveInventoryHelper
   def store_ids_for_new_records(records, hashes, keys)
     keys = Array(keys)
     hashes.each do |h|
+      h = h.is_a?(DtoCollection::Dto) ? h.attributes : h
       r = records.detect { |r| keys.all? { |k| r.send(k) == r.class.type_for_attribute(k.to_s).cast(h[k]) } }
       h[:id]      = r.id
       h[:_object] = r
