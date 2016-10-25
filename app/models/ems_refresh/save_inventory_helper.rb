@@ -56,6 +56,88 @@ module EmsRefresh::SaveInventoryHelper
     found
   end
 
+  def collect_dto_inventory_with_findkey(dto, new_records, updated_records, record_index)
+    # Find the record and add if to bucket for creation or update
+    uuid = dto.manager_uuid
+    # found = record_index.fetch(dto.data)
+    found = record_index[uuid]
+    if found.nil?
+      new_records << dto.data
+    else
+      updated_records[found.id] = dto.data
+      record_index.delete(uuid)
+    end
+  end
+
+  def save_dto_inventory_multi_batch_doh(association, dto_collection, deletes, find_key, child_keys = [], extra_keys = [], disconnect = false)
+    association.reset
+    # Fetch all dependencies in the data
+    dto_collection.data.map(&:attributes)
+    # dto_collection.each(&:attributes)
+
+    # record_index = TypedIndex.new(association, find_key)
+    record_index = {}
+    # TODO(lsmola) would be nice to select only few cols, but we would need to convert association to col name
+    # selected = [:id] + dto_collection.manager_ref
+    # selected << :type if dto_collection.model_class.new.respond_to? :type
+    # association.select(selected).find_each do |record|
+    # association.find_each do |record|
+    #   record_index[dto_collection.object_index(record)] = record
+    # end
+
+    deletes         = []
+    new_records     = dto_collection.to_hash.clone
+    updated_records = {}
+    _log.info("PROCESSING #{dto_collection}")
+
+    association.find_each do |record|
+      uuid = dto_collection.object_index(record)
+      found = new_records.delete(uuid)
+      if found
+        updated_records[record.id] = found.data
+      else
+        deletes << record
+      end
+    end
+
+    # new_records     = []
+    # updated_records = {}
+    # _log.info("PROCESSING #{dto_collection}")
+    # dto_collection.each do |dto|
+    #   # byebug if dto_collection.model_class == FirewallRule && !record_index.blank?
+    #   collect_dto_inventory_with_findkey(dto, new_records, updated_records, record_index)
+    # end
+    _log.info("PROCESSED #{dto_collection}")
+
+    # Delete the items no longer found
+    unless deletes.blank?
+      type = association.proxy_association.reflection.name
+      _log.info("[#{type}] Deleting #{log_format_deletes(deletes)}")
+      disconnect ? deletes.each(&:disconnect_inv) : delete_inventory_multi(dto_collection, association, deletes)
+    end
+
+    unless updated_records.blank?
+      _log.info("UPDATING BATCH size #{updated_records.size} of #{dto_collection}")
+      dto_collection.model_class.transaction do
+        dto_collection.model_class.update(updated_records.keys, updated_records.values)
+      end
+      _log.info("UPDATED BATCH #{dto_collection}")
+    end
+
+    _log.info("ACTUAL CREATING BATCH size #{dto_collection.size} #{dto_collection}")
+    # Add the new items
+    association_meta_info = dto_collection.parent.class.reflect_on_association(dto_collection.association)
+    if association_meta_info.options[:through].blank?
+      dto_collection.model_class.transaction do
+        association.push(new_records.values.map { |x| association.build(x.data.except(:id)) })
+      end
+    else
+      dto_collection.model_class.transaction do
+        dto_collection.model_class.create(new_records.values.map(&:data))
+      end
+    end
+  end
+
   def save_dto_inventory_multi_batch(association, dto_collection, deletes, find_key, child_keys = [], extra_keys = [], disconnect = false)
     association.reset
 
@@ -73,12 +155,14 @@ module EmsRefresh::SaveInventoryHelper
     record_index = TypedIndex.new(association, find_key)
 
     new_records = []
+    _log.info("PROCESSING #{dto_collection}")
     ActiveRecord::Base.transaction do
       dto_collection.each do |h|
         h = h.kind_of?(::ManagerRefresh::Dto) ? h.attributes : h
         save_dto_inventory_with_findkey(association, h.except(*remove_keys), deletes_index, new_records, record_index)
       end
     end
+    _log.info("PROCESSED #{dto_collection}")
 
     # Delete the items no longer found
     unless deletes_index.blank?
@@ -88,6 +172,7 @@ module EmsRefresh::SaveInventoryHelper
       disconnect ? deletes.each(&:disconnect_inv) : delete_inventory_multi(dto_collection, association, deletes)
     end
 
+    _log.info("ACTUAL SAVING #{dto_collection}")
     # Add the new items
     association_meta_info = dto_collection.parent.class.reflect_on_association(dto_collection.association)
     if association_meta_info.options[:through].blank?
@@ -117,10 +202,12 @@ module EmsRefresh::SaveInventoryHelper
     record_index = TypedIndex.new(association, find_key)
 
     new_records = []
+    _log.info("PROCESSING #{dto_collection}")
     dto_collection.each do |h|
       h = h.kind_of?(::ManagerRefresh::Dto) ? h.attributes : h
       save_dto_inventory_with_findkey(association, h.except(*remove_keys), deletes_index, new_records, record_index)
     end
+    _log.info("PROCESSED #{dto_collection}")
 
     # Delete the items no longer found
     unless deletes_index.blank?
@@ -130,6 +217,7 @@ module EmsRefresh::SaveInventoryHelper
       disconnect ? deletes.each(&:disconnect_inv) : delete_inventory_multi(dto_collection, association,  deletes)
     end
 
+    _log.info("ACTUAL SAVING #{dto_collection}")
     # Add the new items
     association_meta_info = dto_collection.parent.class.reflect_on_association(dto_collection.association)
     if association_meta_info.options[:through].blank?
