@@ -31,6 +31,10 @@ module ManagerRefresh
     end
 
     def attributes
+      unless dto_collection.attributes_blacklist.blank?
+        data.delete_if {|key, _value| dto_collection.attributes_blacklist.include?(key) }
+      end
+
       data.transform_values! do |value|
         if value.kind_of? ::ManagerRefresh::DtoLazy
           value.load
