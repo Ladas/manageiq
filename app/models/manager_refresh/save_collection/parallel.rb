@@ -4,11 +4,17 @@ module ManagerRefresh::SaveCollection
     extend ManagerRefresh::SaveCollection::Helper
 
     class << self
-      def save_collections(dto_collections)
+      def save_collections(ems, dto_collections)
         verify_dto_collections(dto_collections)
-        dto_collections = dto_collections.values
-        edges           = build_edges(dto_collections)
-        layers          = topological_sort(dto_collections, edges)
+        dto_collections    = dto_collections.values
+        edges, fixed_edges = build_edges(dto_collections)
+        # byebug
+        assert_fixed_graph(fixed_edges)
+        acyclic_edges, feedback_edges = build_feedback_and_acyclic_edge_set(edges, fixed_edges)
+        # byebug
+        build_directed_acyclic_graph(dto_collections, feedback_edges)
+
+        layers          = topological_sort(dto_collections, acyclic_edges)
 
         sorted_graph_log = "Topological sorting of manager #{""} with ---nodes---:\n#{dto_collections.join("\n")}\n"
         sorted_graph_log += "---edges---:\n#{edges.map { |x| "<#{x.first}, #{x.last}>"}.join("\n")}\n"
@@ -20,11 +26,15 @@ module ManagerRefresh::SaveCollection
 
         _log.info(sorted_graph_log)
 
-        saver_pool = ManagerRefresh::SaveCollection::ParallelInventorySaver.pool(size: 10)
+        # saver_pool = ManagerRefresh::SaveCollection::ParallelInventorySaver.pool(size: 10)
 
         layers.each_with_index do |layer, index|
           _log.info("Saving manager #{""} Layer #{index}")
-          saver_pool.save_in_parallel(layer)
+          # saver_pool.save_in_parallel(layer)
+          layer.each do |dto_collection|
+            # todo refactor the saving method out
+            save_dto_inventory(ems, dto_collection) unless dto_collection.saved?
+          end
           _log.info("Saved manager #{""} Layer #{index}")
         end
 
@@ -41,14 +51,78 @@ module ManagerRefresh::SaveCollection
         end
       end
 
-      def build_edges(dto_collections)
-        edges = []
-        dto_collections.each do |dto_collection|
-          dto_collection.dependencies.each do |dependency|
-            edges << [dependency, dto_collection]
+      def assert_fixed_graph(fixed_edges)
+        fixed_edges.each do |edge|
+          raise "Cycle in fixed graph detected" if detect_cycle(edge, fixed_edges - [edge])
+        end
+      end
+
+      def build_feedback_and_acyclic_edge_set(edges, fixed_edges)
+        edges = edges.dup
+        acyclic_edges = fixed_edges.dup
+        feedback_edge_set = []
+
+        while edges.present?
+          edge = edges.pop
+          if detect_cycle(edge, acyclic_edges)
+            feedback_edge_set << edge
+          else
+            acyclic_edges << edge
           end
         end
-        edges
+
+        return acyclic_edges, feedback_edge_set
+      end
+
+      def build_directed_acyclic_graph(vertices, feedback_edge_set)
+        vertices.each do |dto_collection|
+          feedback_dependencies = feedback_edge_set.select { |e| e.second == dto_collection }.map(&:first)
+          attrs = dto_collection.dependency_attributes_for(feedback_dependencies)
+
+          # Todo first dup the dto_collection, then blacklist it in original and whitelist it in the second one
+          unless attrs.blank?
+            dto_collection.blacklist_attributes!(attrs)
+          end
+        end
+      end
+
+      def detect_cycle(edge, acyclic_edges)
+        # Test if adding edge creates a cycle, ew will traverse the graph from edge Vertice, through all it's
+        # dependencies
+        starting_vertice = edge.second
+        edges            = [edge] + acyclic_edges
+        traverse_dependecies([starting_vertice], starting_vertice, edges, vertice_edges(edges, starting_vertice))
+      end
+
+      def traverse_dependecies(traversed_vertices, current_vertice, edges, dependencies)
+        traversed_vertices << current_vertice
+
+        dependencies.each do |vertice_edge|
+          vertice = vertice_edge.first
+          if traversed_vertices.include?(vertice)
+            # raise "Cycle from #{current_vertice} to #{vertice}"
+            return true
+          end
+          return true if traverse_dependecies(traversed_vertices, vertice, edges, vertice_edges(edges, vertice))
+        end
+
+        false
+      end
+
+      def vertice_edges(edges, vertice)
+        edges.select { |e| e.second == vertice}
+      end
+
+      def build_edges(dto_collections)
+        edges       = []
+        fixed_edges = []
+        dto_collections.each do |dto_collection|
+          dto_collection.dependencies.each do |dependency|
+            fixed_edges << [dependency, dto_collection] if dto_collection.fixed_dependencies.include?(dependency)
+            edges       << [dependency, dto_collection]
+          end
+        end
+        return edges, fixed_edges
       end
 
       def topological_sort(vertices, edges)

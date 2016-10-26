@@ -30,6 +30,7 @@ module ManagerRefresh::SaveCollection
           end
         end
 
+        _log.info("Saving #{dto_collection} of size #{dto_collection.size}")
         save_dto_inventory(ems, dto_collection)
       end
     end

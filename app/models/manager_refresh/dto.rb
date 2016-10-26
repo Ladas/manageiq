@@ -26,6 +26,10 @@ module ManagerRefresh
       data[key] = value
     end
 
+    def load
+      object
+    end
+
     def object
       data[:_object]
     end
@@ -36,9 +40,9 @@ module ManagerRefresh
       end
 
       data.transform_values! do |value|
-        if value.kind_of? ::ManagerRefresh::DtoLazy
+        if loadable?(value)
           value.load
-        elsif value.kind_of?(Array) && value.any? { |x| x.kind_of? ::ManagerRefresh::DtoLazy }
+        elsif value.kind_of?(Array) && value.any? { |x| loadable?(x) }
           value.compact.map(&:load).compact
         else
           value
@@ -52,6 +56,11 @@ module ManagerRefresh
 
     def inspect
       to_s
+    end
+
+    private
+    def loadable?(value)
+      value.kind_of?(::ManagerRefresh::DtoLazy) || value.kind_of?(::ManagerRefresh::Dto)
     end
   end
 end

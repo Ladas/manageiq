@@ -3,7 +3,8 @@ module ManagerRefresh
     class << self
       def save_inventory(ems, dto_collections)
         _log.info("#{log_header(ems)} Saving EMS Inventory...Start")
-        ManagerRefresh::SaveCollection::Recursive.save_collections(ems, dto_collections)
+        # ManagerRefresh::SaveCollection::Recursive.save_collections(ems, dto_collections)
+        ManagerRefresh::SaveCollection::Parallel.save_collections(ems, dto_collections)
         _log.info("#{log_header(ems)} Saving EMS Inventory...Complete")
         ems
       end

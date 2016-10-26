@@ -43,11 +43,12 @@ module EmsRefresh::SaveInventoryHelper
     end
   end
 
-  def save_dto_inventory_with_findkey(association, hash, deletes, new_records, record_index)
+  def save_dto_inventory_with_findkey(association, hash, deletes, new_records, record_index, method = nil)
     # Find the record, and update if found, else create it
-    found = record_index.fetch(hash)
+    method ||= :build
+    found  = record_index.fetch(hash)
     if found.nil?
-      found = association.build(hash.except(:id))
+      found = association.public_send(method, hash.except(:id))
       new_records << found
     else
       found.update_attributes!(hash.except(:id, :type))
@@ -158,8 +159,20 @@ module EmsRefresh::SaveInventoryHelper
     _log.info("PROCESSING #{dto_collection}")
     ActiveRecord::Base.transaction do
       dto_collection.each do |h|
+        # byebug if dto_collection.model_class == ManageIQ::Providers::Amazon::CloudManager::OrchestrationStack
         h = h.kind_of?(::ManagerRefresh::Dto) ? h.attributes : h
-        save_dto_inventory_with_findkey(association, h.except(*remove_keys), deletes_index, new_records, record_index)
+
+        association_meta_info = dto_collection.parent.class.reflect_on_association(dto_collection.association)
+
+        if association_meta_info.options[:through].blank?
+          entity_builder = association
+          method         = :build
+        else
+          entity_builder = dto_collection.model_class
+          method         = :new
+        end
+
+        save_dto_inventory_with_findkey(entity_builder, h.except(*remove_keys), deletes_index, new_records, record_index, method)
       end
     end
     _log.info("PROCESSED #{dto_collection}")
@@ -176,10 +189,12 @@ module EmsRefresh::SaveInventoryHelper
     # Add the new items
     association_meta_info = dto_collection.parent.class.reflect_on_association(dto_collection.association)
     if association_meta_info.options[:through].blank?
+      byebug if dto_collection.model_class.kind_of? Disk
       ActiveRecord::Base.transaction do
         association.push(new_records)
       end
     else
+      byebug if dto_collection.model_class.kind_of? Disk
       ActiveRecord::Base.transaction do
         new_records.map(&:save)
       end
