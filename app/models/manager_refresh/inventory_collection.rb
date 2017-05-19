@@ -360,7 +360,7 @@ module ManagerRefresh
       if value.kind_of?(Hash) && value['type'] == "ManagerRefresh::InventoryObjectLazy"
         inventory_collection = available_inventory_collections[value['inventory_collection_name'].try(:to_sym)]
         raise "Couldn't build lazy_link #{value} the inventory_collection_name was not found" if inventory_collection.blank?
-        inventory_collection.lazy_find(value['ems_ref'], :key => value['key'], :default => value['default'])
+        inventory_collection.lazy_find(value['ems_ref'], :key => value['key'].try(:to_sym), :default => value['default'])
       else
         value
       end
@@ -392,6 +392,7 @@ module ManagerRefresh
       when :local_db_find_references
         self.saved = true
       when :local_db_find_missing_references
+      when :stream_data
       else
         raise "Unknown InventoryCollection strategy: :#{strategy_name}, allowed strategies are :local_db_cache_all, "\
               ":local_db_find_references and :local_db_find_missing_references."
@@ -448,7 +449,7 @@ module ManagerRefresh
 
       if unique_indexes.blank?
         raise "#{self} and its table #{model_class.table_name} must have a unique index defined, in order to use"\
-              " strategy :stream_data."
+              " strategy :stream_data"
       end
       @unique_index_columns = unique_indexes.first.columns
     end
@@ -845,18 +846,34 @@ module ManagerRefresh
     def scan_inventory_object!(inventory_object)
       inventory_object.data.each do |key, value|
         if value.kind_of?(Array)
-          value.each { |val| scan_inventory_object_attribute!(key, val) }
+          value.each { |val| scan_inventory_object_attribute!(inventory_object, key, val) }
         else
-          scan_inventory_object_attribute!(key, value)
+          scan_inventory_object_attribute!(inventory_object, key, value)
         end
       end
     end
 
-    def scan_inventory_object_attribute!(key, value)
+    def scan_inventory_object_attribute!(inventory_object, key, value)
       return if !inventory_object_lazy?(value) && !inventory_object?(value)
 
       # Storing attributes and their dependencies
       (dependency_attributes[key] ||= Set.new) << value.inventory_collection if value.dependency?
+      # byebug if value.dependency?
+      # byebug if !value.dependency?
+      # saving strategy build_skeletal_references
+      if strategy == :stream_data
+        if value.inventory_collection.manager_ref.size == 1 && inventory_object_lazy?(value) && !value.ems_ref.blank? && value.key.nil? && value.dependency?
+          # TODO(lsmola) solve the key, since that requires data from the actual reference. At best our DB is designed
+          # the way, we don't duplicate the data, but rather get them through a query
+          # TODO(lsmola) solve the manager_ref.size > 1 by having unique manager_ref on every table.
+          # TODO(lsmola) non lazy links? Well that means user is sending those together, right?
+          # Instead of loading the reference from the DB, we'll add the dummy InventoryObject (having only ems_ref and
+          # info from the builder_params) to the correct InventoryCollection. Which will either be found in the DB or
+          # created as a small dummy object. The refresh of the object will then fill the rest of the data, while not
+          # touching the reference.
+          value.inventory_collection.find_or_build(value.ems_ref)
+        end
+      end
 
       # Storing a reference in the target inventory_collection, then each IC knows about all the references and can
       # e.g. load all the referenced uuids from a DB

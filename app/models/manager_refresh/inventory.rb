@@ -37,7 +37,7 @@ module ManagerRefresh
         parser.parse
       end
 
-      persister.inventory_collections
+      ManagerRefresh::Inventory::Persister.from_yaml(persister.to_yaml).inventory_collections
     end
   end
 end
