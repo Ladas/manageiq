@@ -6,8 +6,7 @@ module ManagerRefresh
                 :internal_attributes, :delete_method, :data, :data_index, :dependency_attributes, :manager_ref,
                 :association, :complete, :update_only, :transitive_dependency_attributes, :custom_manager_uuid,
                 :custom_db_finder, :check_changed, :arel, :builder_params, :loaded_references, :db_data_index,
-                :inventory_object_attributes, :name, :saver_strategy, :parent_inventory_collections, :manager_uuids,
-                :skeletal_manager_uuids, :targeted_arel, :targeted
+                :inventory_object_attributes, :name
 
     delegate :each, :size, :to => :to_a
 
@@ -205,7 +204,7 @@ module ManagerRefresh
     # @param custom_db_finder [Proc] A custom way of getting the InventoryCollection out of the DB in a case of any DB
     #        based strategy. This should be used in a case of complex query needed for e.g. targeted refresh or as an
     #        optimization for :custom_manager_uuid.
-    #
+
     #        Example, we solve N+1 issue from Example <param :custom_manager_uuid> as well as a selection used for
     #        targeted refresh getting Hardware object from the DB instead of the API:
     #          Having InventoryCollection.new({
@@ -281,58 +280,16 @@ module ManagerRefresh
     #             inventory_object[:label] = inventory_object[:name]
     #           So by using inventory_object_attributes, we will be guarding the allowed attributes and will have an
     #           explicit list of allowed attributes, that can be used also for documentation purposes.
-    # @param unique_index_columns [Array] Array of symbols identifying columns of a DB unique index, we will be using.
+    # @param unique_index_columns [Array] Array of symbols identifying a columns of a DB unique index we will be using.
     #        If there is only 1 unique index, this will be auto-discovered, otherwise we need to specify the correct
     #        one.
     # @param name [Symbol] A unique name of the InventoryCollection under a Persister. If not provided, the :association
     #        attribute is used. Providing either :name or :association is mandatory.
-    # @param saver_strategy [Symbol] A strategy that will be used for actual persisting to the DB.
-    #        Allowed saver strategies are:
-    #          - :default => Using Rails saving methods, this way is not safe to run in multiple workers concurrently,
-    #            since it will lead to non consistent data.
-    #          - :concurrent_saving => This method is designed for concurrent saving. It uses atomic upsert to avoid
-    #            data duplication and it uses timestamp based atomic checks to avoid new data being overwritten by the
-    #            the old data.
-    #          - :concurrent_batch_saving => Same as concurrent saving, but the upsert queries are executed for batches
-    #            of data, instead of 1 record, leading to much lower number of DB queries.
-    # @param parent_inventory_collections [Array] Array of ManagerRefresh::InventoryCollection objects, that are serve
-    #        as a parents to this InventoryCollection. Then this InventoryCollection completeness will be encapsulated
-    #        parent_inventory_collections :manager_uuids instead of this InventoryCollection :manager_uuids.
-    #
-    #        Example: given ..
-    # @param manager_uuids [Array] Array of manager_uuids of the InventoryObjects we want to create/update/delete. Using
-    #        this attribute, the db_collection_for_comparison will be automatically limited by the manager_uuids, in a
-    #        case of a simple relation. In a case of a complex relation, we can leverage :manager_uuids in a
-    #        :targeted_arel.
-    # @param skeletal_manager_uuids TODO(lsmola) is this internal? [Array] Array of manager_uuids that will be used only for create/update/delete of
-    #        this InventoryCollection and will not propagate to child inventory collections using defined using
-    #        :parent_inventory_collections attribute. This array serves only for precreating of skeletal relations of
-    #        this InventoryCollection.
-    # @param targeted_arel [Proc] A callable block that receives this InventoryCollection as a first argument. In there
-    #        we can leverage a :parent_inventory_collections or :manager_uuids to limit the query based on the
-    #        manager_uuids available.
-    #        Example:
-    #          targeted_arel = lambda do |inventory_collection|
-    #            manager_uuids = inventory_collection.parent_inventory_collections.collect(&:manager_uuids).flatten
-    #            inventory_collection.db_collection_for_comparison.hardwares.joins(:vm_or_template).where(
-    #              'vms' => {:ems_ref => manager_uuids}
-    #            )
-    #          end
-    #
-    #          inventory_collection = InventoryCollection.new({
-    #                                   :model_class                 => ::Hardware,
-    #                                   :association                 => :hardwares,
-    #                                   :parent_inventory_collection => [vms, miq_templates]
-    #                                 })
-    # @param targeted [Boolean] True if the collection is targeted, in that case it will be leveraging :manager_uuids
-    #        :parent_inventory_collections and :targeted_arel
     def initialize(model_class: nil, manager_ref: nil, association: nil, parent: nil, strategy: nil, saved: nil,
                    custom_save_block: nil, delete_method: nil, data_index: nil, data: nil, dependency_attributes: nil,
                    attributes_blacklist: nil, attributes_whitelist: nil, complete: nil, update_only: nil,
                    check_changed: nil, custom_manager_uuid: nil, custom_db_finder: nil, arel: nil, builder_params: {},
-                   inventory_object_attributes: nil, unique_index_columns: nil, name: nil, saver_strategy: nil,
-                   parent_inventory_collections: nil, manager_uuids: [], skeletal_manager_uuids: [],
-                   targeted_arel: nil, targeted: nil)
+                   inventory_object_attributes: nil, unique_index_columns: nil, name: nil)
       @model_class           = model_class
       @manager_ref           = manager_ref || [:ems_ref]
       @custom_manager_uuid   = custom_manager_uuid
@@ -354,12 +311,6 @@ module ManagerRefresh
       @builder_params        = builder_params
       @unique_index_columns  = unique_index_columns
       @name                  = name || association
-
-      @manager_uuids         = Set.new.merge(manager_uuids)
-      @parent_inventory_collections = parent_inventory_collections
-      @skeletal_manager_uuids = Set.new.merge(skeletal_manager_uuids)
-      @targeted_arel          = targeted_arel
-      @targeted = !!targeted
 
       raise "You have to pass either :name or :association argument to .new of #{self}" if @name.blank?
 
@@ -409,7 +360,7 @@ module ManagerRefresh
       if value.kind_of?(Hash) && value['type'] == "ManagerRefresh::InventoryObjectLazy"
         inventory_collection = available_inventory_collections[value['inventory_collection_name'].try(:to_sym)]
         raise "Couldn't build lazy_link #{value} the inventory_collection_name was not found" if inventory_collection.blank?
-        inventory_collection.lazy_find(value['ems_ref'], :key => value['key'], :default => value['default'])
+        inventory_collection.lazy_find(value['ems_ref'], :key => value['key'].try(:to_sym), :default => value['default'])
       else
         value
       end
@@ -441,7 +392,7 @@ module ManagerRefresh
       when :local_db_find_references
         self.saved = true
       when :local_db_find_missing_references
-      when :stream_data # build_skeletal_references/build_missing_references ?
+      when :stream_data
       else
         raise "Unknown InventoryCollection strategy: :#{strategy_name}, allowed strategies are :local_db_cache_all, "\
               ":local_db_find_references and :local_db_find_missing_references."
@@ -486,14 +437,10 @@ module ManagerRefresh
       @supports_sti_cache
     end
 
-    def targeted?
-      targeted
-    end
-
     def unique_index_columns
       return @unique_index_columns if @unique_index_columns
 
-      unique_indexes = model_class.connection.indexes(model_class.table_name).select(&:unique)
+      unique_indexes = model_class.connection.indexes(model_class.table_name).select { |x| x.unique }
       if unique_indexes.count > 1
         raise "Cannot infer unique index automatically, since the table #{model_class.table_name}"\
               " of the #{self} contains more than 1 unique index: '#{unique_indexes.collect(&:name)}'. Please define"\
@@ -759,42 +706,20 @@ module ManagerRefresh
       to_s
     end
 
-    def scan!(indexed_inventory_collections)
+    def scan!
       data.each do |inventory_object|
         scan_inventory_object!(inventory_object)
-      end
-
-      if parent_inventory_collections.present?
-        self.parent_inventory_collections = parent_inventory_collections.map do |inventory_collection_index|
-          inventory_collection = indexed_inventory_collections[inventory_collection_index]
-          raise "Cannot find inventory collection #{inventory_collection_index} from #{self}" unless inventory_collection
-          inventory_collection
-        end
       end
     end
 
     def db_collection_for_comparison
-      # TODO(lsmola) should we based the targeted collection based on strategy?
-      if targeted?
-        if targeted_arel.respond_to?(:call)
-          targeted_arel.call(self)
-        else
-          raise "Can't build :targeted_arel for #{self}, please provide it as an argument." if manager_ref.count > 1
-          full_collection_for_comparison.where(manager_ref.first => (manager_uuids + skeletal_manager_uuids).to_a.flatten.compact)
-        end
-      else
-        full_collection_for_comparison
-      end
-    end
-
-    def full_collection_for_comparison
       return arel unless arel.nil?
       parent.send(association)
     end
 
     private
 
-    attr_writer :attributes_blacklist, :attributes_whitelist, :db_data_index, :parent_inventory_collections
+    attr_writer :attributes_blacklist, :attributes_whitelist, :db_data_index
 
     # Finds manager_uuid in the DB. Using a configured strategy we cache obtained data in the db_data_index, so the
     # same find will not hit database twice. Also if we use lazy_links and this is called when
