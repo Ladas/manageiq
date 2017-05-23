@@ -18,7 +18,11 @@ module ManagerRefresh::SaveCollection
       private
 
       def save_inventory(inventory_collection)
-        ManagerRefresh::SaveCollection::Saver::Default.new(inventory_collection).save_inventory_collection!
+        if inventory_collection.strategy == :stream_data
+          ManagerRefresh::SaveCollection::Saver::ThreadSafe.new(inventory_collection).save_inventory_collection!
+        else
+          ManagerRefresh::SaveCollection::Saver::Default.new(inventory_collection).save_inventory_collection!
+        end
       end
     end
   end
