@@ -19,8 +19,8 @@ module ManagerRefresh::SaveCollection
         created_counter           = 0
         _log.info("*************** PROCESSING #{inventory_collection} of size #{inventory_collection_size} *************")
         # Records that are in the DB, we will be updating or deleting them.
-        association.find_in_batches do |batch|
-          ActiveRecord::Base.transaction do
+        ActiveRecord::Base.transaction do
+          association.find_in_batches do |batch|
             batch.each do |record|
               next unless assert_distinct_relation(record)
 
@@ -47,7 +47,7 @@ module ManagerRefresh::SaveCollection
           inventory_objects_index.each_slice(1000) do |batch|
             ActiveRecord::Base.transaction do
               batch.each do |index, inventory_object|
-                hash = attributes_index.delete(index)
+                hash = inventory_collection.model_class.new(attributes_index.delete(index)).attributes.symbolize_keys
                 create_record!(inventory_collection, hash, inventory_object)
                 created_counter += 1
               end

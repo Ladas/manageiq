@@ -549,7 +549,7 @@ module ManagerRefresh
         raise "#{self} and its table #{model_class.table_name} must have a unique index defined, in order to use "\
               "saver_strategy :concurrent_safe or :concurrent_safe_batch."
       end
-      @unique_index_columns = unique_indexes.first.columns
+      @unique_index_columns = unique_indexes.first.columns.map(&:to_sym)
     end
 
     def <<(inventory_object)
@@ -700,6 +700,10 @@ module ManagerRefresh
       filtered_dependency_attributes.values.map(&:to_a).flatten.uniq.reject(&:saved?)
     end
 
+    def dependees(inventory_collections)
+
+    end
+
     def dependency_attributes_for(inventory_collections)
       attributes = Set.new
       inventory_collections.each do |inventory_collection|
@@ -786,7 +790,7 @@ module ManagerRefresh
     def foreign_keys
       return [] unless model_class
 
-      @foreign_keys_cache ||= belongs_to_associations.map(&:foreign_key)
+      @foreign_keys_cache ||= belongs_to_associations.map(&:foreign_key).map!(&:to_sym)
     end
 
     def fixed_foreign_keys
@@ -797,6 +801,7 @@ module ManagerRefresh
       manager_ref_set = (manager_ref - manager_ref_allowed_nil)
       @fixed_foreign_keys_cache = manager_ref_set.map { |x| association_to_foreign_key_mapping[x] }.compact
       @fixed_foreign_keys_cache += foreign_keys & manager_ref
+      @fixed_foreign_keys_cache.map!(&:to_sym)
       @fixed_foreign_keys_cache
     end
 
