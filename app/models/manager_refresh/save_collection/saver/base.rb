@@ -55,6 +55,12 @@ module ManagerRefresh::SaveCollection
                   "#{all_manager_uuids_size}, deleted=#{deleted_counter} *************")
       end
 
+      def delete_record!(inventory_collection, record)
+        return false unless inventory_collection.delete_allowed?
+        record.public_send(inventory_collection.delete_method)
+        true
+      end
+
       def assert_distinct_relation(record)
         if unique_db_primary_keys.include?(record.id) # Include on Set is O(1)
           # Change the InventoryCollection's :association or :arel parameter to return distinct results. The :through
@@ -75,7 +81,7 @@ module ManagerRefresh::SaveCollection
 
       def assert_referential_integrity(hash, inventory_object)
         inventory_object.inventory_collection.fixed_foreign_keys.each do |x|
-          if hash[x.to_s].blank?
+          if hash[x].blank?
             _log.info("Ignoring #{inventory_object} because of missing foreign key #{x} for "\
                       "#{inventory_object.inventory_collection.parent.class.name}:"\
                       "#{inventory_object.inventory_collection.parent.id}")
@@ -83,6 +89,33 @@ module ManagerRefresh::SaveCollection
           end
         end
         true
+      end
+
+      # Delete requires when issue below is solved
+      require 'active_support/core_ext/big_decimal/conversions'
+      require "active_support/multibyte/chars"
+      def quote(value)
+        # TODO(lsmola) There seem to be a bug in postgre 9.5, I refuses boolean as 't' when used inside
+        # SET bool_attr='t', while it works for INSERT INTO table (bool_attr) VALUES ('t'). Using SET bool_attr=TRUE
+        # works. Delete the below code when the issue is solved and use:
+        # ActiveRecord::Base.connection.quote(value)
+        con = ActiveRecord::Base.connection
+
+        case value
+        when String, ActiveSupport::Multibyte::Chars, ActiveRecord::Type::Binary::Data
+          "'#{con.quote_string(value.to_s)}'"
+        when true       then TRUE
+        when false      then FALSE
+        when nil        then "NULL"
+          # BigDecimals need to be put in a non-normalized form and quoted.
+        when BigDecimal then value.to_s('F')
+        when Numeric, ActiveSupport::Duration then value.to_s
+        when ActiveRecord::Type::Time::Value then "'#{con.quoted_time(value)}'"
+        when Date, Time then "'#{con.quoted_date(value)}'"
+        when Symbol     then "'#{con.quote_string(value.to_s)}'"
+        when Class      then "'#{value}'"
+        else raise TypeError, "can't quote #{value.class.name}"
+        end
       end
     end
   end
