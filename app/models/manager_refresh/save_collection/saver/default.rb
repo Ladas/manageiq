@@ -21,44 +21,48 @@ module ManagerRefresh::SaveCollection
         created_counter           = 0
         _log.info("*************** PROCESSING #{inventory_collection} of size #{inventory_collection_size} *************")
         # Records that are in the DB, we will be updating or deleting them.
-        ActiveRecord::Base.transaction do
-          association.find_each do |record|
-            next unless assert_distinct_relation(record)
+        association.find_in_batches do |batch|
+          ActiveRecord::Base.transaction do
+            batch.each do |record|
+              next unless assert_distinct_relation(record)
 
-            index = inventory_collection.object_index_with_keys(unique_index_keys, record)
+              index = inventory_collection.object_index_with_keys(unique_index_keys, record)
 
-            # TODO(lsmola) can go away once we indexed our DB with unique indexes
-            if unique_db_indexes.include?(index) # Include on Set is O(1)
-              # We have a duplicate in the DB, destroy it. A find_each method does automatically .order(:id => :asc)
-              # so we always keep the oldest record in the case of duplicates.
-              _log.warn("A duplicate record was detected and destroyed, inventory_collection: "\
-                        "'#{inventory_collection}', record: '#{record}', duplicate_index: '#{index}'")
-              record.destroy
-            else
-              unique_db_indexes << index
-            end
+              # TODO(lsmola) can go away once we indexed our DB with unique indexes
+              if unique_db_indexes.include?(index) # Include on Set is O(1)
+                # We have a duplicate in the DB, destroy it. A find_each method does automatically .order(:id => :asc)
+                # so we always keep the oldest record in the case of duplicates.
+                _log.warn("A duplicate record was detected and destroyed, inventory_collection: "\
+                          "'#{inventory_collection}', record: '#{record}', duplicate_index: '#{index}'")
+                record.destroy
+              else
+                unique_db_indexes << index
+              end
 
-            inventory_object = inventory_objects_index.delete(index)
-            hash             = attributes_index.delete(index)
+              inventory_object = inventory_objects_index.delete(index)
+              hash             = attributes_index.delete(index)
 
-            if inventory_object.nil?
-              # Record was found in the DB but not sent for saving, that means it doesn't exist anymore and we should
-              # delete it from the DB.
-              deleted_counter += 1 if delete_record!(inventory_collection, record)
-            else
-              # Record was found in the DB and sent for saving, we will be updating the DB.
-              update_record!(inventory_collection, record, hash, inventory_object)
+              if inventory_object.nil?
+                # Record was found in the DB but not sent for saving, that means it doesn't exist anymore and we should
+                # delete it from the DB.
+                deleted_counter += 1 if delete_record!(inventory_collection, record)
+              else
+                # Record was found in the DB and sent for saving, we will be updating the DB.
+                update_record!(inventory_collection, record, hash, inventory_object)
+              end
             end
           end
         end
 
         # Records that were not found in the DB but sent for saving, we will be creating these in the DB.
         if inventory_collection.create_allowed?
-          ActiveRecord::Base.transaction do
-            inventory_objects_index.each do |index, inventory_object|
-              hash = attributes_index.delete(index)
-              create_record!(inventory_collection, hash, inventory_object)
-              created_counter += 1
+          inventory_objects_index.each_slice(1000) do |batch|
+            ActiveRecord::Base.transaction do
+              batch.each do |index, inventory_object|
+                hash = attributes_index.delete(index)
+                create_record!(inventory_collection, hash, inventory_object)
+                created_counter += 1
+              end
             end
           end
         end

@@ -700,6 +700,10 @@ module ManagerRefresh
       filtered_dependency_attributes.values.map(&:to_a).flatten.uniq.reject(&:saved?)
     end
 
+    def dependees(inventory_collections)
+
+    end
+
     def dependency_attributes_for(inventory_collections)
       attributes = Set.new
       inventory_collections.each do |inventory_collection|
