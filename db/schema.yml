@@ -658,6 +658,7 @@ container_definitions:
 - deleted_on
 - ems_id
 - old_ems_id
+- deleted
 container_deployment_nodes:
 - id
 - address
@@ -714,6 +715,7 @@ container_groups:
 - deleted_on
 - old_ems_id
 - old_container_project_id
+- deleted
 container_groups_container_services:
 - container_service_id
 - container_group_id
@@ -746,6 +748,7 @@ container_images:
 - created_on
 - old_ems_id
 - deleted_on
+- deleted
 container_label_tag_mappings:
 - id
 - labeled_resource_type
@@ -811,6 +814,7 @@ container_projects:
 - created_on
 - deleted_on
 - old_ems_id
+- deleted
 container_quota_items:
 - id
 - resource
@@ -961,6 +965,7 @@ containers:
 - deleted_on
 - ems_id
 - old_ems_id
+- deleted
 custom_attributes:
 - id
 - section
