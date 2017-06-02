@@ -1,0 +1,183 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://ec2.us-west-1.amazonaws.com/
+    body:
+      encoding: UTF-8
+      string: Action=DescribeAvailabilityZones&Version=2016-11-15
+    headers:
+      Content-Type:
+      - application/x-www-form-urlencoded; charset=utf-8
+      Accept-Encoding:
+      - ''
+      User-Agent:
+      - aws-sdk-ruby2/2.8.7 ruby/2.3.0 x86_64-linux resources
+      X-Amz-Date:
+      - 20170316T141814Z
+      X-Amz-Content-Sha256:
+      - 2bd59c58bf8c2bcc1c39ea3a5a38bb7cd5a643758cbd1b78a746d3a3aa5c1580
+      Authorization:
+      - AWS4-HMAC-SHA256 Credential=AMAZON_CLIENT_ID/20170316/us-west-1/ec2/aws4_request,
+        SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, Signature=c87ce233014380c26155eb121b4006a2b74c9592ed2e336ca620f3be91dfc9a8
+      Content-Length:
+      - '51'
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - text/xml;charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept-Encoding
+      Date:
+      - Thu, 16 Mar 2017 14:18:12 GMT
+      Server:
+      - AmazonEC2
+    body:
+      encoding: UTF-8
+      string: |-
+        <?xml version="1.0" encoding="UTF-8"?>
+        <DescribeAvailabilityZonesResponse xmlns="http://ec2.amazonaws.com/doc/2016-11-15/">
+            <requestId>10385979-4bac-4776-bacc-3844fba2f57d</requestId>
+            <availabilityZoneInfo>
+                <item>
+                    <zoneName>us-west-1a</zoneName>
+                    <zoneState>available</zoneState>
+                    <regionName>us-west-1</regionName>
+                    <messageSet/>
+                </item>
+                <item>
+                    <zoneName>us-west-1b</zoneName>
+                    <zoneState>available</zoneState>
+                    <regionName>us-west-1</regionName>
+                    <messageSet/>
+                </item>
+                <item>
+                    <zoneName>us-west-1c</zoneName>
+                    <zoneState>available</zoneState>
+                    <regionName>us-west-1</regionName>
+                    <messageSet/>
+                </item>
+            </availabilityZoneInfo>
+        </DescribeAvailabilityZonesResponse>
+    http_version: 
+  recorded_at: Thu, 16 Mar 2017 14:18:15 GMT
+- request:
+    method: post
+    uri: https://ec2.us-west-1.amazonaws.com/
+    body:
+      encoding: UTF-8
+      string: Action=DescribeKeyPairs&Version=2016-11-15
+    headers:
+      Content-Type:
+      - application/x-www-form-urlencoded; charset=utf-8
+      Accept-Encoding:
+      - ''
+      User-Agent:
+      - aws-sdk-ruby2/2.8.7 ruby/2.3.0 x86_64-linux resources
+      X-Amz-Date:
+      - 20170316T141815Z
+      X-Amz-Content-Sha256:
+      - e7326d4766918579e6d040a9c8d2243cefc0ab1aaa37cd7a9dab76d8c3538b59
+      Authorization:
+      - AWS4-HMAC-SHA256 Credential=AMAZON_CLIENT_ID/20170316/us-west-1/ec2/aws4_request,
+        SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, Signature=8f01bd11564e52423a9cebeb5932e61537e685ae4e081e4acd90989eb83032e8
+      Content-Length:
+      - '42'
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - text/xml;charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept-Encoding
+      Date:
+      - Thu, 16 Mar 2017 14:18:13 GMT
+      Server:
+      - AmazonEC2
+    body:
+      encoding: UTF-8
+      string: |-
+        <?xml version="1.0" encoding="UTF-8"?>
+        <DescribeKeyPairsResponse xmlns="http://ec2.amazonaws.com/doc/2016-11-15/">
+            <requestId>5c5fbf99-d58d-41ed-b01a-5a1456679933</requestId>
+            <keySet>
+                <item>
+                    <keyName>bronagh-west1</keyName>
+                    <keyFingerprint>29:a0:34:e9:01:b1:28:d0:01:ae:e0:73:ca:dd:ea:2f:14:c4:e1:d6</keyFingerprint>
+                </item>
+                <item>
+                    <keyName>EmsRefreshSpec-KeyPair-OtherRegion</keyName>
+                    <keyFingerprint>fc:53:30:aa:d2:23:c7:8d:e2:e8:05:95:a0:d2:90:fb:15:30:a2:51</keyFingerprint>
+                </item>
+                <item>
+                    <keyName>jf-west-1</keyName>
+                    <keyFingerprint>5f:a8:de:1b:56:ba:3c:12:78:13:79:d6:d0:1d:b9:12:7d:b9:6d:91</keyFingerprint>
+                </item>
+            </keySet>
+        </DescribeKeyPairsResponse>
+    http_version: 
+  recorded_at: Thu, 16 Mar 2017 14:18:16 GMT
+- request:
+    method: post
+    uri: https://cloudformation.us-west-1.amazonaws.com/
+    body:
+      encoding: UTF-8
+      string: Action=DescribeStacks&Version=2010-05-15
+    headers:
+      Content-Type:
+      - application/x-www-form-urlencoded; charset=utf-8
+      Accept-Encoding:
+      - ''
+      User-Agent:
+      - aws-sdk-ruby2/2.8.7 ruby/2.3.0 x86_64-linux resources
+      X-Amz-Date:
+      - 20170316T141816Z
+      X-Amz-Content-Sha256:
+      - 1c0d327d16f37b15838ca07a3964664f2dcff8d7051d9f1d87552e7df79be01f
+      Authorization:
+      - AWS4-HMAC-SHA256 Credential=AMAZON_CLIENT_ID/20170316/us-west-1/cloudformation/aws4_request,
+        SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, Signature=6aa338a92c9f5ac2f8df6d4d731bbd3b8002fad8c5a0c667c025f54bd22a426a
+      Content-Length:
+      - '40'
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 403
+      message: Forbidden
+    headers:
+      X-Amzn-Requestid:
+      - 64ce1532-0a53-11e7-b1b0-e33ebe726f9f
+      Content-Type:
+      - text/xml
+      Content-Length:
+      - '354'
+      Date:
+      - Thu, 16 Mar 2017 14:18:14 GMT
+    body:
+      encoding: UTF-8
+      string: |
+        <ErrorResponse xmlns="http://cloudformation.amazonaws.com/doc/2010-05-15/">
+          <Error>
+            <Type>Sender</Type>
+            <Code>AccessDenied</Code>
+            <Message>User: arn:aws:iam::200278856672:user/VCR is not authorized to perform: cloudformation:DescribeStacks</Message>
+          </Error>
+          <RequestId>64ce1532-0a53-11e7-b1b0-e33ebe726f9f</RequestId>
+        </ErrorResponse>
+    http_version: 
+  recorded_at: Thu, 16 Mar 2017 14:18:17 GMT
+recorded_with: VCR 3.0.3
