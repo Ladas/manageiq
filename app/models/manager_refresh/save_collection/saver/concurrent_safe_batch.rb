@@ -27,6 +27,7 @@ module ManagerRefresh::SaveCollection
 
         # Records that are in the DB, we will be updating or deleting them.
         association.find_in_batches do |batch|
+          _log.info("*************** FIGURING OUT UPDATE OF batch of #{inventory_collection} of size *************")
           batch.each do |record|
             next unless assert_distinct_relation(record)
 
@@ -47,12 +48,14 @@ module ManagerRefresh::SaveCollection
               next unless assert_referential_integrity(hash, inventory_object)
               inventory_object.id = record.id
 
-              record.assign_attributes(hash.except(:id, :type))
-              if !inventory_collection.check_changed? || record.changed?
-                hashes_for_update << record.attributes.symbolize_keys
+              # record.assign_attributes(hash.except(:id, :type))
+              if true #!inventory_collection.check_changed? || record.changed?
+                # hashes_for_update << record.attributes.symbolize_keys
+                hashes_for_update << hash.symbolize_keys.except(:id, :type)
               end
             end
           end
+          _log.info("*************** FIGURED OUT UPDATE OF batch of #{inventory_collection} *************")
 
           # Update in batches
           if hashes_for_update.size >= batch_size
@@ -61,6 +64,7 @@ module ManagerRefresh::SaveCollection
 
             hashes_for_update = []
           end
+          _log.info("*************** ACTUAL UPDATE END OF batch of #{inventory_collection} *************")
 
           # Destroy in batches
           if records_for_destroy.size >= batch_size
@@ -110,7 +114,9 @@ module ManagerRefresh::SaveCollection
         indexed_inventory_objects = {}
         hashes = []
         batch.each do |index, inventory_object|
-          hash = inventory_collection.model_class.new(attributes_index.delete(index)).attributes.symbolize_keys
+          # hash = inventory_collection.model_class.new(attributes_index.delete(index)).attributes.symbolize_keys
+          hash = attributes_index.delete(index).symbolize_keys
+          hash[:type] = inventory_collection.model_class.name if inventory_collection.supports_sti? && hash[:type].blank?
           next unless assert_referential_integrity(hash, inventory_object)
 
           hashes << hash
@@ -120,19 +126,23 @@ module ManagerRefresh::SaveCollection
 
         return if hashes.blank?
 
+        _log.info("*************** SAVING batch of #{inventory_collection} of size #{batch.size} *************")
         ActiveRecord::Base.connection.execute(
           build_insert_query(inventory_collection, all_attribute_keys, hashes)
         )
+        _log.info("*************** LOADING batch of #{inventory_collection} *************")
+
         if inventory_collection.dependees.present?
           # We need to get primary keys of the created objects, but only if there are dependees that would use them
           map_ids_to_inventory_objects(inventory_collection, indexed_inventory_objects, hashes)
         end
+        _log.info("*************** LOADED batch of #{inventory_collection} *************")
       end
 
       def map_ids_to_inventory_objects(inventory_collection, indexed_inventory_objects, hashes)
         inventory_collection.model_class.where(
           build_multi_selection_query(inventory_collection, hashes)
-        ).each do |inserted_record|
+        ).select(inventory_collection.unique_index_columns + [:id]).each do |inserted_record|
           inventory_object = indexed_inventory_objects[inventory_collection.unique_index_columns.map { |x| inserted_record.public_send(x) }]
           inventory_object.id = inserted_record.id if inventory_object
         end

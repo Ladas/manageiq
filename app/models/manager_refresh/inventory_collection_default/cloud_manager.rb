@@ -94,10 +94,19 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       end
 
       attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
-        inventory_collection.parent.hardwares.joins(:vm_or_template).where(
-          'vms' => {:ems_ref => manager_uuids}
-        )
+        manager_uuids   = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        query           = lambda do |manager_uuids_batch|
+          inventory_collection.parent.hardwares.joins(:vm_or_template).where(
+            'vms' => {:ems_ref => manager_uuids_batch}
+          )
+        end
+        custom_iterator = lambda do |&block|
+          manager_uuids.each_slice(inventory_collection.batch_size) do |batch|
+            block.call(query.call(batch))
+          end
+        end
+
+        ManagerRefresh::ApplicationRecordIterator.new(:iterator => custom_iterator)
       end
 
       attributes.merge!(extra_attributes)
@@ -118,10 +127,19 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       end
 
       attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
-        inventory_collection.parent.disks.joins(:hardware => :vm_or_template).where(
-          :hardware => {'vms' => {:ems_ref => manager_uuids}}
-        )
+        manager_uuids   = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        query           = lambda do |manager_uuids_batch|
+          inventory_collection.parent.disks.joins(:hardware => :vm_or_template).where(
+            :hardware => {'vms' => {:ems_ref => manager_uuids_batch}}
+          )
+        end
+        custom_iterator = lambda do |&block|
+          manager_uuids.each_slice(inventory_collection.batch_size) do |batch|
+            block.call(query.call(batch))
+          end
+        end
+
+        ManagerRefresh::ApplicationRecordIterator.new(:iterator => custom_iterator)
       end
 
       attributes.merge!(extra_attributes)

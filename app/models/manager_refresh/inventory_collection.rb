@@ -841,13 +841,20 @@ module ManagerRefresh
       end
     end
 
+    def batch_size
+      1000
+    end
+
     def db_collection_for_comparison
       if targeted?
         if targeted_arel.respond_to?(:call)
           targeted_arel.call(self)
         else
           raise "Can't build :targeted_arel for #{self}, please provide it as an argument." if manager_ref.count > 1
-          db_collection_for_comparison_for((manager_uuids + skeletal_manager_uuids).to_a.flatten.compact)
+          ManagerRefresh::ApplicationRecordIterator.new(
+            :inventory_collection => self,
+            :manager_uuids_set    => (manager_uuids + skeletal_manager_uuids).to_a.flatten.compact
+          )
         end
       else
         full_collection_for_comparison
@@ -886,6 +893,9 @@ module ManagerRefresh
         references << manager_uuid unless references.include?(manager_uuid) # O(1) since references is Set
       end
 
+      # Put our existing data keys into loaded references
+      loaded_references.merge(data_index.keys)
+      # Load the rest of the references from the DB
       populate_db_data_index!
 
       db_data_index[manager_uuid]
