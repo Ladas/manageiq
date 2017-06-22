@@ -74,7 +74,7 @@ class CleanUpDuplicatesInContainersTables < ActiveRecord::Migration[5.0]
     PersistentVolumeClaim      => [:ems_id, :ems_ref],
     # Having :ems_id but not ems_ref
     ContainerComponentStatus   => [:ems_id, :name],
-    ContainerImage             => [:ems_id, :image_ref, :container_image_registry_id],
+    ContainerImage             => [:ems_id, :image_ref],
     ContainerImageRegistry     => [:ems_id, :host, :port],
     # Nested tables, not having :ems_id and the foreign_key is a part of the unique index
     ContainerCondition         => [:container_entity_id, :container_entity_type, :name],

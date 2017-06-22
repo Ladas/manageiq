@@ -19,7 +19,7 @@ class AddUniqueIndexesToContainersTables < ActiveRecord::Migration[5.0]
               [:ems_id, :name],
               :unique => true
     add_index :container_images,
-              [:ems_id, :image_ref, :container_image_registry_id],
+              [:ems_id, :image_ref],
               :unique => true,
               :name   => "index_container_images_unique_multi_column"
     add_index :container_image_registries,
