@@ -44,10 +44,10 @@ module ManagerRefresh
       data.each do |key, value|
         if !allowed?(inventory_collection_scope, key)
           next
-        elsif loadable?(value)
+        elsif loadable?(value) || (!value.kind_of?(Array) && inventory_collection_scope.association_to_foreign_key_mapping[key])
           # Lets fill also the original data, so other InventoryObject referring to this attribute gets the right
           # result
-          data[key] = value.load
+          data[key] = value.try(:load)
           if (foreign_key = inventory_collection_scope.association_to_foreign_key_mapping[key])
             # We have an association to fill, lets fill also the :key, cause some other InventoryObject can refer to it
             record_id                          = data[key].try(:id)
