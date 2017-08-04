@@ -67,6 +67,7 @@ module ManagerRefresh
               attributes_for_saving[foreign_type] = record_id ? base_class : nil
             end
           elsif data[key].kind_of?(::ManagerRefresh::InventoryObject)
+            raise "noooooo"
             # We have an association to fill but not an Activerecord association, so e.g. Ancestry, lets just load
             # it here. This way of storing ancestry is ineffective in DB call count, but RAM friendly
             attributes_for_saving[key] = data[key].base_class_name.constantize.find_by(:id => data[key].id)
@@ -79,7 +80,7 @@ module ManagerRefresh
         end
       end
 
-      attributes_for_saving.symbolize_keys
+      attributes_for_saving.symbolize_keys!
     end
 
     def assign_attributes(attributes)

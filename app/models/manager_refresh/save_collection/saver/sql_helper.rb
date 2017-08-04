@@ -73,7 +73,7 @@ module ManagerRefresh::SaveCollection
         all_attribute_keys_array << :id
         table_name               = inventory_collection.model_class.table_name
 
-        values = hashes.map do |hash|
+        values = hashes.map! do |hash|
           "(#{all_attribute_keys_array.map { |x| quote(hash[x], x, inventory_collection) }.join(",")})"
         end.join(",")
 
@@ -111,20 +111,17 @@ module ManagerRefresh::SaveCollection
         if used_inventory_collection.nil?
           ActiveRecord::Base.connection.quote(value)
         else
-          quote_and_pg_type_cast(value, name, used_inventory_collection)
+          quote_and_pg_type_cast(value, name)
         end
       rescue TypeError => e
         _log.error("Can't quote value: #{value}, of :#{name} and #{inventory_collection}")
         raise e
       end
 
-      def quote_and_pg_type_cast(value, name, used_inventory_collection)
+      def quote_and_pg_type_cast(value, name)
         pg_type_cast(
           ActiveRecord::Base.connection.quote(value),
-          used_inventory_collection.model_class.columns_hash[name.to_s]
-            .try(:sql_type_metadata)
-            .try(:instance_values)
-            .try(:[], "sql_type")
+          pg_type(name)
         )
       end
 
@@ -133,6 +130,20 @@ module ManagerRefresh::SaveCollection
           value
         else
           "#{value}::#{sql_type}"
+        end
+      end
+
+      def pg_type(name)
+        @pg_types_cache[name]
+      end
+
+      def collect_pg_types!(all_attribute_keys)
+        @pg_types_cache = {}
+        all_attribute_keys.each do |key|
+          @pg_types_cache[key] = inventory_collection.model_class.columns_hash[key.to_s]
+                                   .try(:sql_type_metadata)
+                                   .try(:instance_values)
+                                   .try(:[], "sql_type")
         end
       end
     end

@@ -11,6 +11,8 @@ module ManagerRefresh::SaveCollection
 
         # Private attrs
         @unique_index_keys      = inventory_collection.manager_ref_to_cols
+        @unique_index_keys_to_s = inventory_collection.manager_ref_to_cols.map(&:to_s)
+        @select_keys            = [:id] + inventory_collection.manager_ref_to_cols
         @unique_db_primary_keys = Set.new
         @unique_db_indexes      = Set.new
       end
@@ -31,7 +33,7 @@ module ManagerRefresh::SaveCollection
 
       private
 
-      attr_reader :unique_index_keys, :unique_db_primary_keys, :unique_db_indexes
+      attr_reader :unique_index_keys, :unique_index_keys_to_s, :select_keys, :unique_db_primary_keys, :unique_db_indexes
 
       def save!(association)
         attributes_index        = {}
@@ -133,7 +135,7 @@ module ManagerRefresh::SaveCollection
       end
 
       def assert_distinct_relation(record)
-        if unique_db_primary_keys.include?(record.id) # Include on Set is O(1)
+        if unique_db_primary_keys.include?(pluck_index(record, "id")) # Include on Set is O(1)
           # Change the InventoryCollection's :association or :arel parameter to return distinct results. The :through
           # relations can return the same record multiple times. We don't want to do SELECT DISTINCT by default, since
           # it can be very slow.
@@ -145,7 +147,7 @@ module ManagerRefresh::SaveCollection
             raise("Please update :association or :arel for #{inventory_collection} to return a DISTINCT result. ")
           end
         else
-          unique_db_primary_keys << record.id
+          unique_db_primary_keys << pluck_index(record, "id")
         end
         true
       end

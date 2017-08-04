@@ -3,6 +3,15 @@ module ManagerRefresh::SaveCollection
     class ConcurrentSafeBatch < ManagerRefresh::SaveCollection::Saver::Base
       private
 
+      def pluck_index(record, key)
+        #record[key] # if called by execute, hm is this faster by 50s on 2M?
+        # @select_keys_indexes_cache ||= select_keys.each_with_object({}).with_index { |(key, obj), index| obj[key.to_s] = index }
+        # record[@select_keys_indexes_cache[key]]
+        record[key]
+      rescue => e
+        byebug
+      end
+
       def save!(association)
         attributes_index        = {}
         inventory_objects_index = {}
@@ -21,17 +30,30 @@ module ManagerRefresh::SaveCollection
         all_attribute_keys += [:created_on, :updated_on] if inventory_collection.supports_timestamps_on_variant?
         all_attribute_keys += [:created_at, :updated_at] if inventory_collection.supports_timestamps_at_variant?
 
+        collect_pg_types!(all_attribute_keys)
+
         _log.info("*************** PROCESSING #{inventory_collection} of size #{inventory_collection.size} *************")
         hashes_for_update = []
         records_for_destroy = []
 
+        # byebug if inventory_collection.name == :container_image_registries
+        # byebug if inventory_collection.name == :container_images
+        aa = 1
         # Records that are in the DB, we will be updating or deleting them.
-        association.find_in_batches do |batch|
+        # association.select(*select_keys).find_in_batches(:batch_size => 5000) do |batch|
+        # ActiveRecord::Base.connection.execute(association.select(*select_keys).order("id ASC").to_sql).each do |record|
+        # ActiveRecord::Base.connection.query(association.select(*select_keys).order("id ASC").to_sql).each do |record|
+
+        ActiveRecord::Base.connection.execute(association.select(*select_keys).order("id ASC").to_sql).each do |record|
           update_time = time_now
-          batch.each do |record|
+          # byebug if inventory_collection.name == :container_images
+          # batch.pluck(*select_keys).each do |record|
+          #   byebug if inventory_collection.name == :container_images && aa ==1
+          #   puts aa += 1
+
             next unless assert_distinct_relation(record)
 
-            index = inventory_collection.object_index_with_keys(unique_index_keys, record)
+            index = unique_index_keys_to_s.map { |attribute| pluck_index(record, attribute).to_s }.join(inventory_collection.stringify_joiner)
             inventory_object = inventory_objects_index.delete(index)
             hash             = attributes_index.delete(index)
 
@@ -44,7 +66,7 @@ module ManagerRefresh::SaveCollection
             else
               # Record was found in the DB and sent for saving, we will be updating the DB.
               next unless assert_referential_integrity(hash, inventory_object)
-              inventory_object.id = record.id
+              inventory_object.id = pluck_index(record, "id")
 
               hash_for_update = if inventory_collection.use_ar_object?
                                   record.assign_attributes(hash.except(:id, :type))
@@ -56,15 +78,14 @@ module ManagerRefresh::SaveCollection
                                                       all_attribute_keys,
                                                       hash.symbolize_keys)
                                 else
-                                  hash.symbolize_keys
+                                  hash
                                 end
               assign_attributes_for_update!(hash_for_update, update_time)
-              inventory_collection.store_updated_records(record)
+              inventory_collection.store_updated_records([{:id => record.first}])
 
-              hash_for_update[:id] = record.id
+              hash_for_update[:id] = inventory_object.id
               hashes_for_update << hash_for_update
             end
-          end
 
           # Update in batches
           if hashes_for_update.size >= batch_size
@@ -105,6 +126,9 @@ module ManagerRefresh::SaveCollection
       end
 
       def destroy_records(records)
+        puts "wants to destroy #{records}"
+        return
+
         return false unless inventory_collection.delete_allowed?
         return if records.blank?
 
@@ -125,9 +149,12 @@ module ManagerRefresh::SaveCollection
       end
 
       def update_records!(all_attribute_keys, hashes)
+        puts "updating #{Time.now.utc} #{hashes.last.try(:[], :value)}"
         return if hashes.blank?
-
-        ActiveRecord::Base.connection.execute(build_update_query(all_attribute_keys, hashes))
+        query = build_update_query(all_attribute_keys, hashes)
+        puts "query_built #{Time.now.utc}"
+        ActiveRecord::Base.connection.execute(query)
+        puts "updated #{Time.now.utc}"
       end
 
       def create_records!(all_attribute_keys, batch, attributes_index)

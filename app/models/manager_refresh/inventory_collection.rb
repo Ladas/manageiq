@@ -673,6 +673,10 @@ module ManagerRefresh
     end
 
     def object_index_with_keys(keys, object)
+      keys.map { |attribute| pluck_index(object, attribute).to_s }.join(stringify_joiner)
+    end
+
+    def object_index_with_keys_ar(keys, object)
       keys.map { |attribute| object.public_send(attribute).to_s }.join(stringify_joiner)
     end
 
@@ -685,6 +689,7 @@ module ManagerRefresh
     end
 
     def manager_ref_to_cols
+      # TODO(lsmola) this should contain the polymorphic _type
       # Convert attributes from unique key to actual db cols
       manager_ref.map do |ref|
         association_to_foreign_key_mapping[ref] || ref
@@ -960,7 +965,9 @@ module ManagerRefresh
     end
 
     def batch_size
-      1000
+      # 200000
+      # 2000
+      200000
     end
 
     def build_multi_selection_condition(hashes, keys = nil)
@@ -1023,6 +1030,8 @@ module ManagerRefresh
       {
         :id => identity
       }
+    rescue => e
+      byebug
     end
 
     # Finds manager_uuid in the DB. Using a configured strategy we cache obtained data in the db_data_index, so the
