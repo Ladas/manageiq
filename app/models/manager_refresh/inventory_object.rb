@@ -15,6 +15,7 @@ module ManagerRefresh
     end
 
     def manager_uuid
+      # TODO(lsmola) should we have a separate function for uuid containing foreign keys? Probably yes
       id_with_keys(manager_ref)
     end
 

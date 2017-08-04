@@ -64,7 +64,7 @@ module ManagerRefresh::SaveCollection
               delete_record!(record) if inventory_collection.delete_allowed?
             else
               # Record was found in the DB and sent for saving, we will be updating the DB.
-              update_record!(record, hash, inventory_object) if assert_referential_integrity(hash, inventory_object)
+              update_record!(record, hash, inventory_object) if assert_referential_integrity(hash)
             end
           end
         end
@@ -79,7 +79,7 @@ module ManagerRefresh::SaveCollection
             inventory_objects_index.each do |index, inventory_object|
               hash = attributes_index.delete(index)
 
-              create_record!(hash, inventory_object) if assert_referential_integrity(hash, inventory_object)
+              create_record!(hash, inventory_object) if assert_referential_integrity(hash)
             end
           end
         end
@@ -152,12 +152,12 @@ module ManagerRefresh::SaveCollection
         true
       end
 
-      def assert_referential_integrity(hash, inventory_object)
-        inventory_object.inventory_collection.fixed_foreign_keys.each do |x|
-          next unless hash[x].blank?
-          _log.info("Ignoring #{inventory_object} of #{inventory_object.inventory_collection} because of missing foreign key #{x} for "\
-                    "#{inventory_object.inventory_collection.parent.class.name}:"\
-                    "#{inventory_object.inventory_collection.parent.try(:id)}")
+      def assert_referential_integrity(hash)
+        inventory_collection.fixed_foreign_keys.each do |x|
+          next unless hash[x].nil?
+          _log.info("Ignoring #{hash} of #{inventory_collection} because of missing foreign key #{x} for "\
+                    "#{inventory_collection.parent.class.name}:"\
+                    "#{inventory_collection.parent.try(:id)}")
           return false
         end
         true
@@ -183,7 +183,7 @@ module ManagerRefresh::SaveCollection
       end
 
       def assign_attributes_for_create!(hash, create_time)
-        hash[:type]         = inventory_collection.model_class.name if inventory_collection.supports_sti? && hash[:type].blank?
+        hash[:type]         = inventory_collection.model_class.name if inventory_collection.supports_sti? && hash[:type].nil?
         hash[:created_on]   = create_time if inventory_collection.supports_timestamps_on_variant?
         hash[:created_at]   = create_time if inventory_collection.supports_timestamps_at_variant?
         assign_attributes_for_update!(hash, create_time)

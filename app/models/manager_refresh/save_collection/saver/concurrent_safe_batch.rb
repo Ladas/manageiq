@@ -7,7 +7,8 @@ module ManagerRefresh::SaveCollection
         #record[key] # if called by execute, hm is this faster by 50s on 2M?
         # @select_keys_indexes_cache ||= select_keys.each_with_object({}).with_index { |(key, obj), index| obj[key.to_s] = index }
         # record[@select_keys_indexes_cache[key]]
-        record[key]
+        @select_keys_indexes_cache ||= select_keys.each_with_object({}).with_index { |(key, obj), index| obj[key.to_s] = index }
+        record[@select_keys_indexes_cache[key]]
       rescue => e
         byebug
       end
@@ -44,7 +45,7 @@ module ManagerRefresh::SaveCollection
         # ActiveRecord::Base.connection.execute(association.select(*select_keys).order("id ASC").to_sql).each do |record|
         # ActiveRecord::Base.connection.query(association.select(*select_keys).order("id ASC").to_sql).each do |record|
 
-        ActiveRecord::Base.connection.execute(association.select(*select_keys).order("id ASC").to_sql).each do |record|
+        ActiveRecord::Base.connection.query(association.select(*select_keys).order("id ASC").to_sql).each do |record|
           update_time = time_now
           # byebug if inventory_collection.name == :container_images
           # batch.pluck(*select_keys).each do |record|
@@ -55,7 +56,7 @@ module ManagerRefresh::SaveCollection
 
             index = unique_index_keys_to_s.map { |attribute| pluck_index(record, attribute).to_s }.join(inventory_collection.stringify_joiner)
             inventory_object = inventory_objects_index.delete(index)
-            hash             = attributes_index.delete(index)
+            hash             = attributes_index[index]
 
             if inventory_object.nil?
               # Record was found in the DB but not sent for saving, that means it doesn't exist anymore and we should
@@ -65,7 +66,7 @@ module ManagerRefresh::SaveCollection
               end
             else
               # Record was found in the DB and sent for saving, we will be updating the DB.
-              next unless assert_referential_integrity(hash, inventory_object)
+              next unless assert_referential_integrity(hash)
               inventory_object.id = pluck_index(record, "id")
 
               hash_for_update = if inventory_collection.use_ar_object?
@@ -81,7 +82,7 @@ module ManagerRefresh::SaveCollection
                                   hash
                                 end
               assign_attributes_for_update!(hash_for_update, update_time)
-              inventory_collection.store_updated_records([{:id => record.first}])
+              inventory_collection.store_updated_records([{:id => pluck_index(record, "id")}])
 
               hash_for_update[:id] = inventory_object.id
               hashes_for_update << hash_for_update
@@ -177,7 +178,7 @@ module ManagerRefresh::SaveCollection
 
           assign_attributes_for_create!(hash, create_time)
 
-          next unless assert_referential_integrity(hash, inventory_object)
+          next unless assert_referential_integrity(hash)
 
           hashes << hash
           # Index on Unique Columns values, so we can easily fill in the :id later

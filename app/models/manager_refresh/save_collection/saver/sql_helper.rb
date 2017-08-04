@@ -76,6 +76,19 @@ module ManagerRefresh::SaveCollection
         values = hashes.map! do |hash|
           "(#{all_attribute_keys_array.map { |x| quote(hash[x], x, inventory_collection) }.join(",")})"
         end.join(",")
+        # Wuuuuuuuut this takes like 3.5 minutes instead of the 9s the maps and passing array multiple times using
+        # values = ""
+        # hashes.each do |hash|
+        #   values << "("
+        #   all_attribute_keys_array.each do |key|
+        #     values << quote(hash[key], key, inventory_collection)
+        #     values << ","
+        #   end
+        #   values[-1] = ""
+        #   values << ")"
+        #   values << ","
+        # end
+        # values[-1] = ""
 
         update_query = %{
           UPDATE #{table_name}
@@ -126,7 +139,7 @@ module ManagerRefresh::SaveCollection
       end
 
       def pg_type_cast(value, sql_type)
-        if sql_type.blank?
+        if sql_type.nil?
           value
         else
           "#{value}::#{sql_type}"
