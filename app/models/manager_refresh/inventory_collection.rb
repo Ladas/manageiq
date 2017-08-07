@@ -673,10 +673,6 @@ module ManagerRefresh
     end
 
     def object_index_with_keys(keys, object)
-      keys.map { |attribute| pluck_index(object, attribute).to_s }.join(stringify_joiner)
-    end
-
-    def object_index_with_keys_ar(keys, object)
       keys.map { |attribute| object.public_send(attribute).to_s }.join(stringify_joiner)
     end
 

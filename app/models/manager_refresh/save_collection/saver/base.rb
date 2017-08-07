@@ -100,6 +100,10 @@ module ManagerRefresh::SaveCollection
         inventory_collection.batch_size
       end
 
+      def record_key(record, key)
+        record.public_send(key)
+      end
+
       def delete_complement
         return unless inventory_collection.delete_allowed?
 
@@ -135,7 +139,7 @@ module ManagerRefresh::SaveCollection
       end
 
       def assert_distinct_relation(record)
-        if unique_db_primary_keys.include?(pluck_index(record, "id")) # Include on Set is O(1)
+        if unique_db_primary_keys.include?(record_key(record, "id")) # Include on Set is O(1)
           # Change the InventoryCollection's :association or :arel parameter to return distinct results. The :through
           # relations can return the same record multiple times. We don't want to do SELECT DISTINCT by default, since
           # it can be very slow.
@@ -147,7 +151,7 @@ module ManagerRefresh::SaveCollection
             raise("Please update :association or :arel for #{inventory_collection} to return a DISTINCT result. ")
           end
         else
-          unique_db_primary_keys << pluck_index(record, "id")
+          unique_db_primary_keys << record_key(record, "id")
         end
         true
       end
