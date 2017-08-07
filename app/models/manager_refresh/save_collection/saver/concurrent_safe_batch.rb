@@ -77,7 +77,7 @@ module ManagerRefresh::SaveCollection
                                 elsif inventory_collection.serializable_keys?(all_attribute_keys)
                                   values_for_database(inventory_collection.model_class,
                                                       all_attribute_keys,
-                                                      hash.symbolize_keys)
+                                                      hash)
                                 else
                                   hash
                                 end

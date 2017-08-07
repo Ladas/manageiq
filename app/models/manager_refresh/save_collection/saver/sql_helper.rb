@@ -16,10 +16,13 @@ module ManagerRefresh::SaveCollection
       end
 
       def build_insert_query(all_attribute_keys, hashes)
+        # Cache the connection for the batch
+        connection = get_connection
+
         all_attribute_keys_array = all_attribute_keys.to_a
         table_name               = inventory_collection.model_class.table_name
         values                   = hashes.map do |hash|
-          "(#{all_attribute_keys_array.map { |x| quote(hash[x], x) }.join(",")})"
+          "(#{all_attribute_keys_array.map { |x| quote(connection, hash[x], x) }.join(",")})"
         end.join(",")
         col_names = all_attribute_keys_array.map { |x| quote_column_name(x) }.join(",")
 
@@ -64,31 +67,26 @@ module ManagerRefresh::SaveCollection
       end
 
       def quote_column_name(key)
-        ActiveRecord::Base.connection.quote_column_name(key)
+        get_connection.quote_column_name(key)
+      end
+
+      def get_connection
+        # Cache the connection for the batch
+        ActiveRecord::Base.connection
       end
 
       def build_update_query(all_attribute_keys, hashes)
+        # Cache the connection for the batch
+        connection = get_connection
+
         # We want to ignore type and create timestamps when updating
         all_attribute_keys_array = all_attribute_keys.to_a.delete_if { |x| %i(type created_at created_on).include?(x) }
         all_attribute_keys_array << :id
         table_name               = inventory_collection.model_class.table_name
 
         values = hashes.map! do |hash|
-          "(#{all_attribute_keys_array.map { |x| quote(hash[x], x, inventory_collection) }.join(",")})"
+          "(#{all_attribute_keys_array.map { |x| quote(connection, hash[x], x, true) }.join(",")})"
         end.join(",")
-        # Wuuuuuuuut this takes like 3.5 minutes instead of the 9s the maps and passing array multiple times using
-        # values = ""
-        # hashes.each do |hash|
-        #   values << "("
-        #   all_attribute_keys_array.each do |key|
-        #     values << quote(hash[key], key, inventory_collection)
-        #     values << ","
-        #   end
-        #   values[-1] = ""
-        #   values << ")"
-        #   values << ","
-        # end
-        # values[-1] = ""
 
         update_query = %{
           UPDATE #{table_name}
@@ -119,21 +117,23 @@ module ManagerRefresh::SaveCollection
         inventory_collection.build_multi_selection_condition(hashes, unique_index_columns)
       end
 
-      def quote(value, name = nil, used_inventory_collection = nil)
+      def quote(connection, value, name = nil, type_cast_for_pg = nil)
         # TODO(lsmola) needed only because UPDATE FROM VALUES needs a specific PG typecasting, remove when fixed in PG
-        if used_inventory_collection.nil?
-          ActiveRecord::Base.connection.quote(value)
+        if type_cast_for_pg
+          quote_and_pg_type_cast(connection, value, name)
         else
-          quote_and_pg_type_cast(value, name)
+          # connection.quote(value)
+          rails_quote(connection, value)
         end
       rescue TypeError => e
         _log.error("Can't quote value: #{value}, of :#{name} and #{inventory_collection}")
         raise e
       end
 
-      def quote_and_pg_type_cast(value, name)
+      def quote_and_pg_type_cast(connection, value, name)
         pg_type_cast(
-          ActiveRecord::Base.connection.quote(value),
+          # connection.quote(value),
+          rails_quote(connection, value),
           pg_type(name)
         )
       end
@@ -158,6 +158,30 @@ module ManagerRefresh::SaveCollection
                                    .try(:instance_values)
                                    .try(:[], "sql_type")
         end
+      end
+
+      def rails_quote(connection, value)
+      #   # TODO(lsmola) Calling ConnectionAdapters::Quoting _quote method innards here, to speed things up. We can get
+      #   # rid of this once we have the parallel saving, since we do not need these micro optimizations of the 1 core
+      #   # process.
+      #   case value
+      #   when String, ActiveSupport::Multibyte::Chars, ActiveRecord::Type::Binary::Data
+      #     "'#{connection.quote_string(value.to_s)}'"
+      #   when true       then connection.quoted_true
+      #   when false      then connection.quoted_false
+      #   when nil        then "NULL"
+      #     # BigDecimals need to be put in a non-normalized form and quoted.
+      #   when BigDecimal then value.to_s('F')
+      #   when Numeric, ActiveSupport::Duration then value.to_s
+      #   when ActiveRecord::Type::Time::Value then "'#{connection.quoted_time(value)}'"
+      #   when Date, Time then "'#{connection.quoted_date(value)}'"
+      #   when Symbol     then "'#{connection.quote_string(value.to_s)}'"
+      #   when Class      then "'#{value}'"
+      #   else raise TypeError, "can't quote #{value.class.name}"
+      #   end
+      # rescue => e
+      #   byebug
+        connection.quote(value)
       end
     end
   end
