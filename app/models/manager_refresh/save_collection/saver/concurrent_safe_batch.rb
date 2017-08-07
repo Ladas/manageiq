@@ -4,9 +4,7 @@ module ManagerRefresh::SaveCollection
       private
 
       def record_key(record, key)
-        @record_key_method_cache ||= pure_sql_records_fetching? ? :pure_sql_record_key : :ar_record_key
-
-        send(@record_key_method_cache, record, key)
+        send(@record_key_method, record, key)
       end
 
       def ar_record_key(record, key)
@@ -15,29 +13,11 @@ module ManagerRefresh::SaveCollection
 
       def pure_sql_record_key(record, key)
         # record[key] # if called by execute, hm is this faster by 50s on 2M?
-        # @select_keys_indexes_cache ||= select_keys.each_with_object({}).with_index { |(key, obj), index| obj[key.to_s] = index }
-        # record[@select_keys_indexes_cache[key]]
-
-        @select_keys_indexes_cache ||= select_keys.each_with_object({}).with_index { |(key, obj), index| obj[key.to_s] = index }
-        record[@select_keys_indexes_cache[key]]
-      rescue => e
-        byebug
-      end
-
-      def primary_key
-        @primary_key_cache ||= inventory_collection.model_class.primary_key
-      end
-
-      def arel_primary_key
-        @arel_primary_key_cache ||= inventory_collection.model_class.arel_attribute(primary_key)
-      end
-
-      def pure_sql_records_fetching?
-        !inventory_collection.use_ar_object?
+        record[select_keys_indexes[key]]
       end
 
       def batch_iterator(association)
-        if pure_sql_records_fetching? && !association.kind_of?(ManagerRefresh::ApplicationRecordIterator)
+        if pure_sql_records_fetching
           # Building fast iterator doing pure SQL query avoiding redundant creation of AR objects, responds to
           # find_in_batches. For targeted refresh, the association can already be ApplicationRecordIterator.
           pure_sql_iterator = lambda do |&block|

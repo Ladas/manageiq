@@ -963,7 +963,7 @@ module ManagerRefresh
     def batch_size
       # 200000
       # 2000
-      200000
+      200_000
     end
 
     def build_multi_selection_condition(hashes, keys = nil)
