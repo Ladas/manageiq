@@ -124,7 +124,6 @@ module ManagerRefresh::SaveCollection
                                   hash
                                 end
               assign_attributes_for_update!(hash_for_update, update_time)
-              inventory_collection.store_updated_records([{:id => record_key(record, primary_key)}])
 
               hash_for_update[:id] = inventory_object.id
               hashes_for_update << hash_for_update
@@ -184,6 +183,7 @@ module ManagerRefresh::SaveCollection
 
       def update_records!(all_attribute_keys, hashes)
         return if hashes.blank?
+        inventory_collection.store_updated_records(hashes)
         query = build_update_query(all_attribute_keys, hashes)
         get_connection.execute(query)
       end
