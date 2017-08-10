@@ -26,7 +26,8 @@ module ManagerRefresh::SaveCollection
         # records flowing through there, we probably don't need to optimize that association to fetch a pure SQL.
         @pure_sql_records_fetching = !inventory_collection.use_ar_object? && !@association.kind_of?(ManagerRefresh::ApplicationRecordIterator)
 
-        @batch_size_for_persisting = 10_000
+        # @batch_size_for_persisting = 10_000
+        @batch_size_for_persisting = 2
 
         @batch_size          = @pure_sql_records_fetching ? @batch_size_for_persisting : inventory_collection.batch_size
         @record_key_method   = @pure_sql_records_fetching ? :pure_sql_record_key : :ar_record_key

@@ -8,6 +8,8 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
         :attributes_blacklist   => [:genealogy_parent],
         :unique_index_columns   => [:ems_id, :ems_ref],
         :use_ar_object          => true, # Because of raw_power_state setter
+        # TODO(lsmola) can't do batch strategy for network_ports because of security_groups relation, fix that and unify with above
+        :saver_strategy         => :default,
         :batch_extra_attributes => [:power_state, :state_changed_on, :previous_state],
         :builder_params         => {
           :ems_id   => ->(persister) { persister.manager.id },
@@ -175,6 +177,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
         :model_class          => ::ManageIQ::Providers::CloudManager::OrchestrationStack,
         :association          => :orchestration_stacks,
         :attributes_blacklist => [:parent],
+        :use_ar_object                => true,
         :builder_params       => {
           :ems_id => ->(persister) { persister.manager.id },
         }

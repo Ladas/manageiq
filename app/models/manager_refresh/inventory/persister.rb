@@ -135,6 +135,18 @@ class ManagerRefresh::Inventory::Persister
     end
   end
 
+  # Adds multiple inventory collections with the same data starting with shared options
+  #
+  # @param default [ManagerRefresh::InventoryCollectionDefault] Default
+  # @param inventory_collections [Array] Array of method names for passed default parameter
+  # @param :shared_overwrite_options [Hash] Hash used with config that will overwrite the values
+  # @param :shared_default_options [Hash] Has with default shared values
+  def add_inventory_collections_with_shared(default, inventory_collections,  shared_overwrite_options: {}, shared_default_options: {})
+    inventory_collections.each do |inventory_collection|
+      add_inventory_collection(shared_default_options.merge(default.send(inventory_collection, shared_overwrite_options)))
+    end
+  end
+
   # Adds remaining inventory collections with the same data
   #
   # @param defaults [Array] Array of ManagerRefresh::InventoryCollectionDefault
