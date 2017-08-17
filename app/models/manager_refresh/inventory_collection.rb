@@ -601,7 +601,7 @@ module ManagerRefresh
       unless data_index[inventory_object.manager_uuid]
         data_index[inventory_object.manager_uuid] = inventory_object
         secondary_refs.each do |name, keys|
-          secondary_indexes[name][inventory_object.id_with_keys(keys)] = inventory_object
+          secondary_indexes[name][inventory_object.manager_uuid(keys)] = inventory_object
         end
         data << inventory_object
       end
@@ -619,26 +619,27 @@ module ManagerRefresh
 
     # TODO: use object_index_with_keys instead of adding ref?
     def object_index(object, ref: :manager_ref)
-      index_array = named_ref(ref).map do |attribute|
-        if object.respond_to?(:[])
-          object[attribute].to_s
-        else
-          object.public_send(attribute).try(:id) || object.public_send(attribute).to_s
-        end
+      if object.respond_to?(:[])
+        hash_index_with_keys_pre_save(named_ref(ref), object)
+      else
+        object_index_with_keys_pre_save(named_ref(ref), object)
       end
-      stringify_reference(index_array)
+    end
+
+    def object_index_with_keys_pre_save(keys, object)
+      keys.each_with_object({}) { |attribute, obj| obj[attribute] = object.public_send(attribute).to_s }
+    end
+
+    def hash_index_with_keys_pre_save(keys, hash)
+      keys.each_with_object({}) { |attribute, obj| obj[attribute] = hash[attribute].to_s }
     end
 
     def object_index_with_keys(keys, object)
-      keys.map { |attribute| object.public_send(attribute).to_s }.join(stringify_joiner)
+      keys.map { |attribute| object.public_send(attribute).to_s }
     end
 
-    def stringify_joiner
-      "__"
-    end
-
-    def stringify_reference(reference)
-      reference.join(stringify_joiner)
+    def hash_index_with_keys(keys, hash)
+      keys.map { |attribute| hash[attribute].to_s }
     end
 
     def manager_ref_to_cols
@@ -668,16 +669,21 @@ module ManagerRefresh
 
     def find(manager_uuid, ref: :manager_ref)
       return if manager_uuid.nil?
-      # TODO `ref` handling is partial
+
+      manager_uuid = if !manager_uuid.kind_of?(Hash) && named_ref(ref).size == 1
+                       {named_ref(ref).first => manager_uuid}
+                     else
+                       manager_uuid
+                     end
+
+      # TODO(lsmola) `ref` handling is partial, we are missing secondary indexes for DB strategies
       case strategy
       when :local_db_find_references, :local_db_cache_all
         find_in_db(manager_uuid)
       when :local_db_find_missing_references
         named_index(ref)[manager_uuid] || find_in_db(manager_uuid)
       else
-        # TODO: find(hash) code path apparently exists for lazy_find(hash) ?  Consider deprecating.
-        # Better have lazy_find_by that computes string uuid ahead of time.
-        manager_uuid.kind_of?(Hash) ? find_by(manager_uuid, :ref => ref) : named_index(ref)[manager_uuid]
+        named_index(ref)[manager_uuid]
       end
     end
 
@@ -691,11 +697,20 @@ module ManagerRefresh
     end
 
     def lazy_find_by(manager_uuid_hash, ref: :manager_ref, key: nil, default: nil)
-      # TODO raise for missing keys like `find_by`
+      keys = named_ref(ref)
+      # if !manager_uuid_hash.keys.all? { |x| keys.include?(x) } || manager_uuid_hash.keys.size != keys.size
+      #   raise "Allowed find_by ref=#{ref} keys are #{keys}, received #{manager_uuid_hash.keys}"
+      # end
       lazy_find(object_index(manager_uuid_hash, :ref => ref), :ref => ref, :key => key, :default => default)
     end
 
     def lazy_find(manager_uuid, ref: :manager_ref, key: nil, default: nil)
+      manager_uuid = if !manager_uuid.kind_of?(Hash) && named_ref(ref).size == 1
+                       {named_ref(ref).first => manager_uuid}
+                     else
+                       manager_uuid
+                     end
+
       ::ManagerRefresh::InventoryObjectLazy.new(self, manager_uuid, :ref => ref, :key => key, :default => default)
     end
 
@@ -951,9 +966,11 @@ module ManagerRefresh
           hashes = extract_references(manager_uuids + skeletal_manager_uuids)
           full_collection_for_comparison.where(build_multi_selection_condition(hashes))
         else
+          extracted_manager_uuids = (manager_uuids + skeletal_manager_uuids).map { |x| x[manager_ref.first] }.to_a.flatten.compact
+
           ManagerRefresh::ApplicationRecordIterator.new(
             :inventory_collection => self,
-            :manager_uuids_set    => (manager_uuids + skeletal_manager_uuids).to_a.flatten.compact
+            :manager_uuids_set    => extracted_manager_uuids
           )
         end
       else
@@ -1073,19 +1090,8 @@ module ManagerRefresh
     # Extracting references to a relation friendly format, or a format processable by a custom_db_finder
     #
     # @param new_references [Array] array of manager_uuids of the InventoryObjects
-    def extract_references(new_references = [])
-      hash_uuids_by_ref = []
-
-      new_references.each do |manager_uuid|
-        uuids = manager_uuid.split(stringify_joiner)
-
-        reference = {}
-        manager_ref.each_with_index do |ref, index|
-          reference[ref] = uuids[index]
-        end
-        hash_uuids_by_ref << reference
-      end
-      hash_uuids_by_ref
+    def extract_references(new_references = {})
+      new_references
     end
 
     # Takes ApplicationRecord record, converts it to the InventoryObject and places it to db_data_index
@@ -1095,7 +1101,7 @@ module ManagerRefresh
       index = if custom_manager_uuid.nil?
                 object_index(record)
               else
-                stringify_reference(custom_manager_uuid.call(record))
+                custom_manager_uuid.call(record)
               end
 
       attributes = record.attributes.symbolize_keys
@@ -1133,7 +1139,7 @@ module ManagerRefresh
       # For concurent safe strategies, we want to pre-build the relations using the lazy_link data, so we can fill up
       # the foreign key in first pass.
       if [:concurrent_safe, :concurrent_safe_batch].include?(saver_strategy)
-        if value.inventory_collection.manager_ref.size == 1 && inventory_object_lazy?(value) &&
+        if value.inventory_collection.parent_inventory_collections.blank? && inventory_object_lazy?(value) &&
            !value.ems_ref.blank? && value.key.nil? && value.dependency?
           # Instead of loading the reference from the DB, we'll add the dummy InventoryObject (having only ems_ref and
           # info from the builder_params) to the correct InventoryCollection. Which will either be found in the DB or
@@ -1143,8 +1149,8 @@ module ManagerRefresh
           # TODO(lsmola) solve the :key, since that requires data from the actual reference. At best our DB should be
           # designed the way, we don't duplicate the data, but rather get them with a join. (3NF!)
 
-          value.inventory_collection.find_or_build(value.ems_ref)
-          value.inventory_collection.skeletal_manager_uuids << value.ems_ref
+          value.inventory_collection.find_or_build_by(value.manager_uuid)
+          value.inventory_collection.skeletal_manager_uuids << value.manager_uuid
         end
       end
 

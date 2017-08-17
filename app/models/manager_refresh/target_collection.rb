@@ -58,13 +58,7 @@ module ManagerRefresh
     # ManagerRefresh::Target, e.g. in the Inventory::Collector code.
     def manager_refs_by_association
       @manager_refs_by_association ||= targets.select { |x| x.kind_of?(ManagerRefresh::Target) }.each_with_object({}) do |x, obj|
-        if obj[x.association].blank?
-          obj[x.association] = x.manager_ref.each_with_object({}) { |(key, value), hash| hash[key] = Set.new([value]) }
-        else
-          obj[x.association].each do |key, value|
-            value << x.manager_ref[key]
-          end
-        end
+        (obj[x.association] ||= []) << x.manager_ref
       end
     end
 

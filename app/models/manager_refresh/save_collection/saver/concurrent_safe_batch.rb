@@ -51,7 +51,7 @@ module ManagerRefresh::SaveCollection
 
         inventory_collection.each do |inventory_object|
           attributes = inventory_object.attributes(inventory_collection)
-          index      = inventory_object.manager_uuid
+          index      = inventory_collection.hash_index_with_keys(unique_index_keys, attributes)
 
           attributes_index[index]        = attributes
           inventory_objects_index[index] = inventory_object
@@ -102,7 +102,7 @@ module ManagerRefresh::SaveCollection
             next unless assert_distinct_relation(primary_key_value)
 
             # TODO(lsmola) unify this behavior with object_index_with_keys method in InventoryCollection
-            index            = unique_index_keys_to_s.map { |attribute| record_key(record, attribute).to_s }.join(inventory_collection.stringify_joiner)
+            index            = unique_index_keys_to_s.map { |attribute| record_key(record, attribute).to_s }
             inventory_object = inventory_objects_index.delete(index)
             hash             = attributes_index[index]
 
