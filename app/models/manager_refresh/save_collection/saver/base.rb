@@ -76,9 +76,10 @@ module ManagerRefresh::SaveCollection
       def save!(association)
         attributes_index        = {}
         inventory_objects_index = {}
+
         inventory_collection.each do |inventory_object|
           attributes = inventory_object.attributes(inventory_collection)
-          index      = inventory_object.manager_uuid
+          index      = inventory_collection.hash_index_with_keys(unique_index_keys, attributes)
 
           attributes_index[index]        = attributes
           inventory_objects_index[index] = inventory_object

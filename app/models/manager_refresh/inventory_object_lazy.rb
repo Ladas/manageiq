@@ -21,7 +21,7 @@ module ManagerRefresh
       suffix = ""
       suffix += ", ref: #{ref}" if ref.present?
       suffix += ", key: #{key}" if key.present?
-      "InventoryObjectLazy:('#{self}', #{inventory_collection}#{suffix})"
+      "InventoryObjectLazy:('#{to_s}', #{inventory_collection}#{suffix})"
     end
 
     def to_raw_lazy_relation

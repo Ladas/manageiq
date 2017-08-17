@@ -118,8 +118,8 @@ module ManagerRefresh
             # designed the way, we don't duplicate the data, but rather get them with a join. (3NF!)
 
             if value.ems_ref
-              value_inventory_collection.find_or_build(value.ems_ref)
-              value_inventory_collection.skeletal_manager_uuids << value.ems_ref
+              value_inventory_collection.find_or_build_by(value.manager_uuid)
+              value_inventory_collection.skeletal_manager_uuids << value.manager_uuid
             end
           end
         end

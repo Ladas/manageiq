@@ -9,7 +9,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.cloud_subnet_network_ports.references(:network_ports).where(
           :network_ports => {:ems_ref => manager_uuids}
         )
@@ -90,7 +90,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.firewall_rules.references(:security_groups).where(
           :security_groups => {:ems_ref => manager_uuids}
         )
@@ -122,7 +122,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_pools.where(:ems_ref => manager_uuids)
       end
 
@@ -140,7 +140,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_pool_members
                             .joins(:load_balancer_pool_member_pools => :load_balancer_pool)
                             .where(:load_balancer_pool_member_pools => {'load_balancer_pools' => {:ems_ref => manager_uuids}})
@@ -159,7 +159,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_pool_member_pools
                             .references(:load_balancer_pools)
                             .where(:load_balancer_pools => {:ems_ref => manager_uuids})
@@ -181,7 +181,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_listeners.joins(:load_balancer).where(
           :load_balancers => {:ems_ref => manager_uuids}
         )
@@ -199,7 +199,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_listener_pools.joins(:load_balancer_pool).where(
           :load_balancer_pools => {:ems_ref => manager_uuids}
         )
@@ -219,7 +219,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_health_checks.where(:ems_ref => manager_uuids)
       end
 
@@ -235,7 +235,7 @@ class ManagerRefresh::InventoryCollectionDefault::NetworkManager < ManagerRefres
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.load_balancer_health_check_members.references(:load_balancer_health_checks).where(
           :load_balancer_health_checks => {:ems_ref => manager_uuids}
         )

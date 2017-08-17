@@ -37,6 +37,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
 
       attributes.merge!(extra_attributes)
     end
+
     def networks(extra_attributes = {})
       attributes = {
         :model_class                  => ::Network,
@@ -46,7 +47,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       }
 
       attributes[:custom_manager_uuid] = lambda do |network|
-        [network.hardware.vm_or_template.ems_ref, network.description]
+        {:hardware => {:vm_or_template => {:ems_ref => network.hardware.vm_or_template.ems_ref}}, :description => network.description}
       end
 
       attributes[:custom_db_finder] = lambda do |inventory_collection, selection, _projection|
@@ -65,7 +66,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       end
 
       attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.networks.joins(:hardware => :vm_or_template).where(
           :hardware => {'vms' => {:ems_ref => manager_uuids}}
         )
@@ -95,7 +96,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.orchestration_stacks_resources.references(:orchestration_stacks).where(
           :orchestration_stacks => {:ems_ref => manager_uuids}
         )
@@ -112,7 +113,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.orchestration_stacks_outputs.references(:orchestration_stacks).where(
           :orchestration_stacks => {:ems_ref => manager_uuids}
         )
@@ -129,7 +130,7 @@ class ManagerRefresh::InventoryCollectionDefault::CloudManager < ManagerRefresh:
       }
 
       extra_attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.orchestration_stacks_parameters.references(:orchestration_stacks).where(
           :orchestration_stacks => {:ems_ref => manager_uuids}
         )

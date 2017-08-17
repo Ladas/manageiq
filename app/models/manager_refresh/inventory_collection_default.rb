@@ -63,7 +63,7 @@ class ManagerRefresh::InventoryCollectionDefault
       end
 
       attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.hardwares.joins(:vm_or_template).where(
           'vms' => {:ems_ref => manager_uuids}
         )
@@ -87,7 +87,7 @@ class ManagerRefresh::InventoryCollectionDefault
       end
 
       attributes[:targeted_arel] = lambda do |inventory_collection|
-        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.to_a }
+        manager_uuids = inventory_collection.parent_inventory_collections.flat_map { |c| c.manager_uuids.map { |x| x[:ems_ref] } }
         inventory_collection.parent.disks.joins(:hardware => :vm_or_template).where(
           :hardware => {'vms' => {:ems_ref => manager_uuids}}
         )
