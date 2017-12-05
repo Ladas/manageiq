@@ -13,6 +13,7 @@ module ManagerRefresh
       delegate :find,
                :primary_index,
                :build_primary_index_for,
+               :build_secondary_indexes_for,
                :to => :index_proxy
 
       delegate :builder_params,
@@ -39,6 +40,7 @@ module ManagerRefresh
           # indexed? Maybe we should allow only lazy access and no direct find fro ma parser. Since for streaming
           # refresh, things won't be parsed together and no full state will be taken.
           build_primary_index_for(inventory_object)
+          build_secondary_indexes_for(inventory_object)
         end
         inventory_collection
       end

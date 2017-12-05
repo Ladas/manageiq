@@ -56,9 +56,6 @@ module ManagerRefresh
       end
 
       def scan!
-        # Reindex secondary indexes here, where all attributes of all inventory_objects has been filled
-        reindex_secondary_indexes!
-
         # Scan InventoryCollection InventoryObjects and store the results inside of the InventoryCollection
         data.each do |inventory_object|
           scan_inventory_object!(inventory_object)
